@@ -17,17 +17,17 @@ fn test_disable_oom_killer() {
 
         // before disable
         let m = mem_controller.memory_stat();
-        assert_eq!(m.oom_control.oom_kill_disable, false);
+        assert!(!m.oom_control.oom_kill_disable);
 
         // now only v1
         if !mem_controller.v2() {
             // disable oom killer
             let r = mem_controller.disable_oom_killer();
-            assert_eq!(r.is_err(), false);
+            assert!(!r.is_err());
 
             // after disable
             let m = mem_controller.memory_stat();
-            assert_eq!(m.oom_control.oom_kill_disable, true);
+            assert!(m.oom_control.oom_kill_disable);
         }
     }
     cg.delete().unwrap();
@@ -60,7 +60,7 @@ fn set_mem_v2() {
             max: None,
         };
         let r = mem_controller.set_mem(m);
-        assert_eq!(true, r.is_ok());
+        assert!(r.is_ok());
 
         let m = mem_controller.get_mem().unwrap();
         // get
@@ -77,7 +77,7 @@ fn set_mem_v2() {
             low: None,
         };
         let r = mem_controller.set_mem(m);
-        assert_eq!(true, r.is_ok());
+        assert!(r.is_ok());
 
         let m = mem_controller.get_mem().unwrap();
         // get

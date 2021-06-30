@@ -29,7 +29,7 @@ fn test_hugetlb_sizes() {
 
         for size in sizes {
             let supported = hugetlb_controller.size_supported(&size);
-            assert_eq!(supported, true);
+            assert!(supported);
             assert_no_error(hugetlb_controller.failcnt(&size));
             assert_no_error(hugetlb_controller.limit_in_bytes(&size));
             assert_no_error(hugetlb_controller.usage_in_bytes(&size));
@@ -40,5 +40,5 @@ fn test_hugetlb_sizes() {
 }
 
 fn assert_no_error(r: Result<u64>) {
-    assert_eq!(!r.is_err(), true)
+    assert!(!r.is_err())
 }

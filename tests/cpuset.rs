@@ -36,12 +36,12 @@ fn test_cpuset_set_cpus() {
             assert_eq!(0, set.cpus.len());
         } else {
             // for cgroup v1, cpuset is copied from parent.
-            assert_eq!(true, !set.cpus.is_empty());
+            assert!(!set.cpus.is_empty());
         }
 
         // 0
         let r = cpuset.set_cpus("0");
-        assert_eq!(true, r.is_ok());
+        assert!(r.is_ok());
 
         let set = cpuset.cpuset();
         assert_eq!(1, set.cpus.len());
@@ -52,7 +52,7 @@ fn test_cpuset_set_cpus() {
         let cpus = cpus.trim();
         if !cpus.is_empty() {
             let r = cpuset.set_cpus(&cpus);
-            assert_eq!(true, r.is_ok());
+            assert!(r.is_ok());
             let set = cpuset.cpuset();
             assert_eq!(1, set.cpus.len());
             assert_eq!(format!("{}-{}", set.cpus[0].0, set.cpus[0].1), cpus);
@@ -72,14 +72,14 @@ fn test_cpuset_set_cpus_add_task() {
         assert_eq!(0, set.cpus.len());
     } else {
         // for cgroup v1, cpuset is copied from parent.
-        assert_eq!(true, !set.cpus.is_empty());
+        assert!(!set.cpus.is_empty());
     }
 
     // Add a task to the control group.
     let pid_i = libc::pid_t::from(nix::unistd::getpid()) as u64;
     let _ = cg.add_task(CgroupPid::from(pid_i));
     let tasks = cg.tasks();
-    assert_eq!(true, !tasks.is_empty());
+    assert!(!tasks.is_empty());
     println!("tasks after added: {:?}", tasks);
 
     // remove task
