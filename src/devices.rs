@@ -49,6 +49,7 @@ impl Default for DeviceType {
 
 impl DeviceType {
     /// Convert a DeviceType into the character that the kernel recognizes.
+    #[allow(clippy::should_implement_trait, clippy::wrong_self_convention)]
     pub fn to_char(&self) -> char {
         match self {
             DeviceType::All => 'a',
@@ -82,6 +83,7 @@ pub enum DevicePermissions {
 
 impl DevicePermissions {
     /// Convert a DevicePermissions into the character that the kernel recognizes.
+    #[allow(clippy::should_implement_trait, clippy::wrong_self_convention)]
     pub fn to_char(&self) -> char {
         match self {
             DevicePermissions::Read => 'r',

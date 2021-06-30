@@ -738,6 +738,7 @@ impl Default for MaxValue {
 }
 
 impl MaxValue {
+    #[allow(clippy::should_implement_trait, clippy::wrong_self_convention)]
     fn to_i64(&self) -> i64 {
         match self {
             MaxValue::Max => -1,
