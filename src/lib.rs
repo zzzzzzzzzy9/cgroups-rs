@@ -423,6 +423,7 @@ pub trait Hierarchy: std::fmt::Debug + Send + Sync {
 
 /// Resource limits for the memory subsystem.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MemoryResources {
     /// How much memory (in bytes) can the kernel consume.
     pub kernel_memory_limit: Option<i64>,
@@ -446,13 +447,15 @@ pub struct MemoryResources {
     /// # Usage:
     /// ```
     /// let resource = &mut cgroups_rs::Resources::default();
-    /// resource.memory.attrs.insert("memory.numa_balancing", "true".to_string());
+    /// resource.memory.attrs.insert("memory.numa_balancing".to_string(), "true".to_string());
     /// // apply here
-    pub attrs: std::collections::HashMap<&'static str, String>,
+    /// ```
+    pub attrs: HashMap<String, String>,
 }
 
 /// Resources limits on the number of processes.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PidResources {
     /// The maximum number of processes that can exist in the control group.
     ///
@@ -464,6 +467,7 @@ pub struct PidResources {
 
 /// Resources limits about how the tasks can use the CPU.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CpuResources {
     // cpuset
     /// A comma-separated list of CPU IDs where the task in the control group can run. Dashes
@@ -488,14 +492,15 @@ pub struct CpuResources {
     /// # Usage:
     /// ```
     /// let resource = &mut cgroups_rs::Resources::default();
-    /// resource.cpu.attrs.insert("cpu.cfs_init_buffer_us", "10".to_string());
+    /// resource.cpu.attrs.insert("cpu.cfs_init_buffer_us".to_string(), "10".to_string());
     /// // apply here
     /// ```
-    pub attrs: std::collections::HashMap<&'static str, String>,
+    pub attrs: HashMap<String, String>,
 }
 
 /// A device resource that can be allowed or denied access to.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DeviceResource {
     /// If true, access to the device is allowed, otherwise it's denied.
     pub allow: bool,
@@ -511,6 +516,7 @@ pub struct DeviceResource {
 
 /// Limit the usage of devices for the control group's tasks.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DeviceResources {
     /// For each device in the list, the limits in the structure are applied.
     pub devices: Vec<DeviceResource>,
@@ -518,6 +524,7 @@ pub struct DeviceResources {
 
 /// Assigned priority for a network device.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct NetworkPriority {
     /// The name (as visible in `ifconfig`) of the interface.
     pub name: String,
@@ -528,6 +535,7 @@ pub struct NetworkPriority {
 /// Collections of limits and tags that can be imposed on packets emitted by the tasks in the
 /// control group.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct NetworkResources {
     /// The networking class identifier to attach to the packets.
     ///
@@ -539,6 +547,7 @@ pub struct NetworkResources {
 
 /// A hugepage type and its consumption limit for the control group.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct HugePageResource {
     /// The size of the hugepage, i.e. `2MB`, `1GB`, etc.
     pub size: String,
@@ -549,6 +558,7 @@ pub struct HugePageResource {
 
 /// Provides the ability to set consumption limit on each type of hugepages.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct HugePageResources {
     /// Set a limit of consumption for each hugepages type.
     pub limits: Vec<HugePageResource>,
@@ -556,6 +566,7 @@ pub struct HugePageResources {
 
 /// Weight for a particular block device.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BlkIoDeviceResource {
     /// The major number of the device.
     pub major: u64,
@@ -569,6 +580,7 @@ pub struct BlkIoDeviceResource {
 
 /// Provides the ability to throttle a device (both byte/sec, and IO op/s)
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BlkIoDeviceThrottleResource {
     /// The major number of the device.
     pub major: u64,
@@ -580,6 +592,7 @@ pub struct BlkIoDeviceThrottleResource {
 
 /// General block I/O resource limits.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BlkIoResources {
     /// The weight of the control group against descendant nodes.
     pub weight: Option<u16>,
@@ -599,6 +612,7 @@ pub struct BlkIoResources {
 
 /// The resource limits and constraints that will be set on the control group.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Resources {
     /// Memory usage related limits.
     pub memory: MemoryResources,
@@ -724,6 +738,7 @@ impl Subsystem {
 
 /// The values for `memory.hight` or `pids.max`
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum MaxValue {
     /// This value is returned when the text is `"max"`.
     Max,

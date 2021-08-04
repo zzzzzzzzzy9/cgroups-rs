@@ -32,6 +32,11 @@ pub struct DevicesController {
 
 /// An enum holding the different types of devices that can be manipulated using this controller.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
 pub enum DeviceType {
     /// The rule applies to all devices.
     All,
@@ -71,6 +76,11 @@ impl DeviceType {
 
 /// An enum with the permissions that can be allowed/denied to the control group.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
 pub enum DevicePermissions {
     /// Permission to read from the device.
     Read,
