@@ -202,7 +202,12 @@ impl Hierarchy for V2 {
         let mut subs = vec![];
 
         let controllers = ret.unwrap().trim().to_string();
-        let controller_list: Vec<&str> = controllers.split(' ').collect();
+        let mut controller_list: Vec<&str> = controllers.split(' ').collect();
+
+        // The freezer functionality is present in V2, but not as a controller,
+        // but apparently as a core functionality. FreezerController supports
+        // that, but we must explicitly fake the controller here.
+        controller_list.push("freezer");
 
         for s in controller_list {
             match s {
