@@ -87,7 +87,7 @@ fn mountinfo_file(file: &mut File) -> Vec<Mountinfo> {
                     }
                 }
             }
-            Err(_) => continue,
+            Err(_) => break,
         }
     }
     r

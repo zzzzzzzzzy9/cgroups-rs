@@ -365,9 +365,14 @@ where
             .map(|file| {
                 let bf = BufReader::new(file);
                 let mut v = Vec::new();
-                for line in bf.lines().flatten() {
-                    let n = line.trim().parse().unwrap_or(0u64);
-                    v.push(n);
+                for line in bf.lines() {
+                    match line {
+                        Ok(line) => {
+                            let n = line.trim().parse().unwrap_or(0u64);
+                            v.push(n);
+                        }
+                        Err(_) => break,
+                    }
                 }
                 v.into_iter().map(CgroupPid::from).collect()
             })
