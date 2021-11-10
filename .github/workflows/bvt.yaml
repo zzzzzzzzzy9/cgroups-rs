@@ -1,20 +1,22 @@
 name: BVT
 on: [pull_request]
+env:
+  RUST_VERSION: 1.52
 jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Build
-        run: make debug
+      - uses: actions/checkout@v2
+      - run: rustup install ${{ env.RUST_VERSION }} && rustup default ${{ env.RUST_VERSION }}
+      - run: make debug
 
   fmt:
     name: Format Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - run: rustup install ${{ env.RUST_VERSION }} && rustup default ${{ env.RUST_VERSION }}
       - run: rustup component add rustfmt
       - run: make fmt
   clippy:
@@ -22,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - run: rustup install ${{ env.RUST_VERSION }} && rustup default ${{ env.RUST_VERSION }}
       - run: rustup component add clippy
       - run: make clippy
   test:
@@ -29,6 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - run: rustup install ${{ env.RUST_VERSION }} && rustup default ${{ env.RUST_VERSION }}
       - run: make test
 
 
