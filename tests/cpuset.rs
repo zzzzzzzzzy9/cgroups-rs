@@ -51,7 +51,7 @@ fn test_cpuset_set_cpus() {
         let cpus = fs::read_to_string("/sys/fs/cgroup/cpuset.cpus.effective").unwrap_or_default();
         let cpus = cpus.trim();
         if !cpus.is_empty() {
-            let r = cpuset.set_cpus(&cpus);
+            let r = cpuset.set_cpus(cpus);
             assert!(r.is_ok());
             let set = cpuset.cpuset();
             assert_eq!(1, set.cpus.len());
