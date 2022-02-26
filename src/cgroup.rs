@@ -359,9 +359,18 @@ fn create_v2_cgroup(root: PathBuf, path: &str) -> Result<()> {
 }
 
 pub fn get_cgroups_relative_paths() -> Result<HashMap<String, String>> {
+    let path = "/proc/self/cgroup".to_string();
+    get_cgroups_relative_paths_by_path(path)
+}
+
+pub fn get_cgroups_relative_paths_by_pid(pid: u32) -> Result<HashMap<String, String>> {
+    let path = format!("/proc/{}/cgroup", pid);
+    get_cgroups_relative_paths_by_path(path)
+}
+
+fn get_cgroups_relative_paths_by_path(path: String) -> Result<HashMap<String, String>> {
     let mut m = HashMap::new();
-    let content =
-        fs::read_to_string("/proc/self/cgroup").map_err(|e| Error::with_cause(ReadFailed, e))?;
+    let content = fs::read_to_string(path).map_err(|e| Error::with_cause(ReadFailed, e))?;
     for l in content.lines() {
         let fl: Vec<&str> = l.split(':').collect();
         if fl.len() != 3 {
