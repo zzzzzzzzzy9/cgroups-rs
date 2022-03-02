@@ -8,6 +8,7 @@
 //!
 //! See the Kernel's documentation for more information about this subsystem, found at:
 //!  [Documentation/cgroup-v1/hugetlb.txt](https://www.kernel.org/doc/Documentation/cgroup-v1/hugetlb.txt)
+use log::warn;
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -88,7 +89,7 @@ impl<'a> From<&'a Subsystem> for &'a HugeTlbController {
 impl HugeTlbController {
     /// Constructs a new `HugeTlbController` with `root` serving as the root of the control group.
     pub fn new(root: PathBuf, v2: bool) -> Self {
-        let sizes = get_hugepage_sizes().unwrap();
+        let sizes = get_hugepage_sizes();
         Self {
             base: root.clone(),
             path: root,
@@ -180,27 +181,29 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
 
-fn get_hugepage_sizes() -> Result<Vec<String>> {
-    let mut m = Vec::new();
+fn get_hugepage_sizes() -> Vec<String> {
     let dirs = fs::read_dir(HUGEPAGESIZE_DIR);
     if dirs.is_err() {
-        return Ok(m);
+        return Vec::new();
     }
 
-    for e in dirs.unwrap() {
-        let entry = e.unwrap();
-        let name = entry.file_name().into_string().unwrap();
-        let parts: Vec<&str> = name.split('-').collect();
-        if parts.len() != 2 {
-            continue;
-        }
-        let bmap = get_binary_size_map();
-        let size = parse_size(parts[1], &bmap)?;
-        let dabbrs = get_decimal_abbrs();
-        m.push(custom_size(size as f64, 1024.0, &dabbrs));
-    }
+    dirs.unwrap()
+        .filter_map(|e| {
+            let entry = e.map_err(|e| warn!("readdir error: {:?}", e)).ok()?;
+            let name = entry.file_name().into_string().unwrap();
+            let parts: Vec<&str> = name.split('-').collect();
+            if parts.len() != 2 {
+                return None;
+            }
+            let bmap = get_binary_size_map();
+            let size = parse_size(parts[1], &bmap)
+                .map_err(|e| warn!("parse_size error: {:?}", e))
+                .ok()?;
+            let dabbrs = get_decimal_abbrs();
 
-    Ok(m)
+            Some(custom_size(size as f64, 1024.0, &dabbrs))
+        })
+        .collect()
 }
 
 pub const KB: u128 = 1000;
