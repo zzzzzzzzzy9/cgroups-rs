@@ -771,7 +771,7 @@ impl fmt::Display for MaxValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             MaxValue::Max => write!(f, "max"),
-            MaxValue::Value(num) => write!(f, "{}", num.to_string()),
+            MaxValue::Value(num) => write!(f, "{}", num),
         }
     }
 }

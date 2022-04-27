@@ -40,5 +40,5 @@ fn test_hugetlb_sizes() {
 }
 
 fn assert_no_error(r: Result<u64>) {
-    assert!(!r.is_err())
+    assert!(r.is_ok())
 }

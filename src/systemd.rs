@@ -17,7 +17,7 @@ use crate::{ControllIdentifier, ControllerInternal, Controllers, Resources, Subs
 pub struct SystemdController {
     base: PathBuf,
     path: PathBuf,
-    v2: bool,
+    _v2: bool,
 }
 
 impl ControllerInternal for SystemdController {
@@ -66,7 +66,7 @@ impl SystemdController {
         Self {
             base: root.clone(),
             path: root,
-            v2,
+            _v2: v2,
         }
     }
 }

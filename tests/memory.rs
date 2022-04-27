@@ -23,7 +23,7 @@ fn test_disable_oom_killer() {
         if !mem_controller.v2() {
             // disable oom killer
             let r = mem_controller.disable_oom_killer();
-            assert!(!r.is_err());
+            assert!(r.is_ok());
 
             // after disable
             let m = mem_controller.memory_stat();
