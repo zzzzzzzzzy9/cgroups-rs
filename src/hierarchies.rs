@@ -297,7 +297,10 @@ impl Default for V2 {
 
 pub const UNIFIED_MOUNTPOINT: &str = "/sys/fs/cgroup";
 
-#[cfg(all(target_os = "linux", not(target_env = "musl")))]
+#[cfg(any(
+    all(target_os = "linux", not(target_env = "musl")),
+    target_os = "android"
+))]
 pub fn is_cgroup2_unified_mode() -> bool {
     use nix::sys::statfs;
 
