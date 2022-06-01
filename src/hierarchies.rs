@@ -170,7 +170,7 @@ impl Hierarchy for V1 {
     }
 
     fn root_control_group(&self) -> Cgroup {
-        Cgroup::load(auto(), "".to_string())
+        Cgroup::load(auto(), "")
     }
 
     fn root(&self) -> PathBuf {
@@ -246,7 +246,7 @@ impl Hierarchy for V2 {
     }
 
     fn root_control_group(&self) -> Cgroup {
-        Cgroup::load(auto(), "".to_string())
+        Cgroup::load(auto(), "")
     }
 
     fn root(&self) -> PathBuf {

@@ -295,7 +295,7 @@ fn parse_cfs_quota_and_period(mut file: File) -> Result<CfsQuotaAndPeriod> {
         return Err(Error::from_string(format!("invaild format: {}", content)));
     }
 
-    let quota = parse_max_value(&fields[0].to_string())?;
+    let quota = parse_max_value(fields[0])?;
     let period = fields[1]
         .parse::<u64>()
         .map_err(|e| Error::with_cause(ParseError, e))?;

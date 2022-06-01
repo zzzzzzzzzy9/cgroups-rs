@@ -137,11 +137,8 @@ pub fn test_hugepages_res_build() {
 
     {
         let c: &HugeTlbController = cg.controller_of().unwrap();
-        assert!(c.limit_in_bytes(&"2MB".to_string()).is_ok());
-        assert_eq!(
-            c.limit_in_bytes(&"2MB".to_string()).unwrap(),
-            4 * 2 * 1024 * 1024
-        );
+        assert!(c.limit_in_bytes("2MB").is_ok());
+        assert_eq!(c.limit_in_bytes("2MB").unwrap(), 4 * 2 * 1024 * 1024);
     }
     cg.delete().unwrap();
 }

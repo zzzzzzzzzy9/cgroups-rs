@@ -52,12 +52,11 @@ fn register_memory_event(
         eventfd(0, EfdFlags::EFD_CLOEXEC).map_err(|e| Error::with_cause(ReadFailed, e))?;
 
     let event_control_path = cg_dir.join("cgroup.event_control");
-    let data;
-    if arg.is_empty() {
-        data = format!("{} {}", eventfd, event_file.as_raw_fd());
+    let data = if arg.is_empty() {
+        format!("{} {}", eventfd, event_file.as_raw_fd())
     } else {
-        data = format!("{} {} {}", eventfd, event_file.as_raw_fd(), arg);
-    }
+        format!("{} {} {}", eventfd, event_file.as_raw_fd(), arg)
+    };
 
     // write to file and set mode to 0700(FIXME)
     fs::write(&event_control_path, data).map_err(|e| Error::with_cause(WriteFailed, e))?;
