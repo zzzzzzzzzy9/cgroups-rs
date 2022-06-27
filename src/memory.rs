@@ -8,6 +8,7 @@
 //!
 //! See the Kernel's documentation for more information about this subsystem, found at:
 //!  [Documentation/cgroup-v1/memory.txt](https://www.kernel.org/doc/Documentation/cgroup-v1/memory.txt)
+use log::warn;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::PathBuf;
@@ -840,8 +841,15 @@ impl MemController {
 
         self.open_path("memory.kmem.limit_in_bytes", true)
             .and_then(|mut file| {
-                file.write_all(limit.to_string().as_ref())
-                    .map_err(|e| Error::with_cause(WriteFailed, e))
+                let r = file.write_all(limit.to_string().as_ref());
+                match r {
+                    Ok(()) => Ok(()),
+                    Err(ref e) if e.raw_os_error() == Some(libc::EOPNOTSUPP) => {
+                        warn!("memory.kmem.limit_in_bytes is unsupported by the kernel");
+                        Ok(())
+                    }
+                    Err(e) => Err(Error::with_cause(WriteFailed, e)),
+                }
             })
     }
 

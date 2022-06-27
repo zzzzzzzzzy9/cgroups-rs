@@ -34,6 +34,21 @@ fn test_disable_oom_killer() {
 }
 
 #[test]
+fn set_kmem_limit_v1() {
+    let h = cgroups_rs::hierarchies::auto();
+    if h.v2() {
+        return;
+    }
+
+    let cg = Cgroup::new(h, String::from("set_kmem_limit_v1"));
+    {
+        let mem_controller: &MemController = cg.controller_of().unwrap();
+        mem_controller.set_kmem_limit(1).unwrap();
+    }
+    cg.delete().unwrap();
+}
+
+#[test]
 fn set_mem_v2() {
     let h = cgroups_rs::hierarchies::auto();
     if !h.v2() {
