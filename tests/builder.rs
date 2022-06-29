@@ -47,7 +47,8 @@ pub fn test_memory_res_build() {
     {
         let c: &MemController = cg.controller_of().unwrap();
         if !c.v2() {
-            assert_eq!(c.kmem_stat().limit_in_bytes, 128 * 1024 * 1024);
+            // Note: we don't tests the value of c.kmem_stat().limit_in_bytes because on Linux
+            // kernel >= 5.16 setting this value is unsupported.
             assert_eq!(c.memory_stat().swappiness, 70);
         }
         assert_eq!(c.memory_stat().limit_in_bytes, 1024 * 1024 * 1024);
