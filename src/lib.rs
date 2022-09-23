@@ -332,7 +332,23 @@ where
             return Ok(());
         }
 
-        remove_dir(self.get_path())
+        // Compatible with runC for remove dir operation
+        // https://github.com/opencontainers/runc/blob/main/libcontainer/cgroups/utils.go#L272
+        //
+        // We trying to remove all paths five times with increasing delay between tries.
+        // If after all there are not removed cgroups - appropriate error will be
+        // returned.
+        let mut delay = std::time::Duration::from_millis(10);
+        let cgroup_path = self.get_path();
+        for _i in 0..4 {
+            if let Ok(()) = remove_dir(cgroup_path) {
+                return Ok(());
+            }
+            std::thread::sleep(delay);
+            delay *= 2;
+        }
+
+        remove_dir(cgroup_path)
     }
 
     /// Attach a task to this controller.
