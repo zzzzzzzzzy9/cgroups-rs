@@ -629,6 +629,15 @@ pub struct BlkIoResources {
     pub throttle_write_bps_device: Vec<BlkIoDeviceThrottleResource>,
     /// Throttled write IO operations per second can be provided for each device.
     pub throttle_write_iops_device: Vec<BlkIoDeviceThrottleResource>,
+
+    /// Customized key-value attributes
+    /// # Usage:
+    /// ```
+    /// let resource = &mut cgroups_rs::Resources::default();
+    /// resource.blkio.attrs.insert("io.cost.weight".to_string(), "10".to_string());
+    /// // apply here
+    /// ```
+    pub attrs: HashMap<String, String>,
 }
 
 /// The resource limits and constraints that will be set on the control group.

@@ -16,7 +16,8 @@ use crate::error::*;
 
 use crate::{read_string_from, read_u64_from};
 use crate::{
-    BlkIoResources, ControllIdentifier, ControllerInternal, Controllers, Resources, Subsystem,
+    BlkIoResources, ControllIdentifier, ControllerInternal, Controllers, CustomizedAttribute,
+    Resources, Subsystem,
 };
 
 /// A controller that allows controlling the `blkio` subsystem of a Cgroup.
@@ -377,6 +378,10 @@ impl ControllerInternal for BlkIoController {
         for dev in &res.throttle_write_iops_device {
             let _ = self.throttle_write_iops_for_device(dev.major, dev.minor, dev.rate);
         }
+
+        res.attrs.iter().for_each(|(k, v)| {
+            let _ = self.set(k, v);
+        });
 
         Ok(())
     }
@@ -771,6 +776,7 @@ impl BlkIoController {
     }
 }
 
+impl CustomizedAttribute for BlkIoController {}
 #[cfg(test)]
 mod test {
     use crate::blkio::{parse_blkio_data, BlkIoData};
