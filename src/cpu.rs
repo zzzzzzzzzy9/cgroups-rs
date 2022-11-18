@@ -131,7 +131,7 @@ impl CpuController {
                     let res = file.read_to_string(&mut s);
                     match res {
                         Ok(_) => Ok(s),
-                        Err(e) => Err(Error::with_cause(ReadFailed, e)),
+                        Err(e) => Err(Error::with_cause(ReadFailed("cpu.stat".to_string()), e)),
                     }
                 })
                 .unwrap_or_default(),
@@ -145,14 +145,15 @@ impl CpuController {
     /// `shares` to `200` ensures that control group `B` receives twice as much as CPU bandwidth.
     /// (Assuming both `A` and `B` are of the same parent)
     pub fn set_shares(&self, shares: u64) -> Result<()> {
-        let mut file = "cpu.shares";
+        let mut file_name = "cpu.shares";
         if self.v2 {
-            file = "cpu.weight";
+            file_name = "cpu.weight";
         }
         // NOTE: .CpuShares is not used here. Conversion is the caller's responsibility.
-        self.open_path(file, true).and_then(|mut file| {
-            file.write_all(shares.to_string().as_ref())
-                .map_err(|e| Error::with_cause(WriteFailed, e))
+        self.open_path(file_name, true).and_then(|mut file| {
+            file.write_all(shares.to_string().as_ref()).map_err(|e| {
+                Error::with_cause(WriteFailed(file_name.to_string(), shares.to_string()), e)
+            })
         })
     }
 
@@ -174,8 +175,12 @@ impl CpuController {
         }
         self.open_path("cpu.cfs_period_us", true)
             .and_then(|mut file| {
-                file.write_all(us.to_string().as_ref())
-                    .map_err(|e| Error::with_cause(WriteFailed, e))
+                file.write_all(us.to_string().as_ref()).map_err(|e| {
+                    Error::with_cause(
+                        WriteFailed("cpu.cfs_period_us".to_string(), us.to_string()),
+                        e,
+                    )
+                })
             })
     }
 
@@ -200,8 +205,12 @@ impl CpuController {
         }
         self.open_path("cpu.cfs_quota_us", true)
             .and_then(|mut file| {
-                file.write_all(us.to_string().as_ref())
-                    .map_err(|e| Error::with_cause(WriteFailed, e))
+                file.write_all(us.to_string().as_ref()).map_err(|e| {
+                    Error::with_cause(
+                        WriteFailed("cpu.cfs_quota_us".to_string(), us.to_string()),
+                        e,
+                    )
+                })
             })
     }
 
@@ -262,23 +271,31 @@ impl CpuController {
         let line = format!("{} {}", new_quota, new_period);
         self.open_path("cpu.max", true).and_then(|mut file| {
             file.write_all(line.as_ref())
-                .map_err(|e| Error::with_cause(WriteFailed, e))
+                .map_err(|e| Error::with_cause(WriteFailed("cpu.max".to_string(), line), e))
         })
     }
 
     pub fn set_rt_runtime(&self, us: i64) -> Result<()> {
         self.open_path("cpu.rt_runtime_us", true)
             .and_then(|mut file| {
-                file.write_all(us.to_string().as_ref())
-                    .map_err(|e| Error::with_cause(WriteFailed, e))
+                file.write_all(us.to_string().as_ref()).map_err(|e| {
+                    Error::with_cause(
+                        WriteFailed("cpu.rt_runtime_us".to_string(), us.to_string()),
+                        e,
+                    )
+                })
             })
     }
 
     pub fn set_rt_period_us(&self, us: u64) -> Result<()> {
         self.open_path("cpu.rt_period_us", true)
             .and_then(|mut file| {
-                file.write_all(us.to_string().as_ref())
-                    .map_err(|e| Error::with_cause(WriteFailed, e))
+                file.write_all(us.to_string().as_ref()).map_err(|e| {
+                    Error::with_cause(
+                        WriteFailed("cpu.rt_period_us".to_string(), us.to_string()),
+                        e,
+                    )
+                })
             })
     }
 }
@@ -288,7 +305,7 @@ impl CustomizedAttribute for CpuController {}
 fn parse_cfs_quota_and_period(mut file: File) -> Result<CfsQuotaAndPeriod> {
     let mut content = String::new();
     file.read_to_string(&mut content)
-        .map_err(|e| Error::with_cause(ReadFailed, e))?;
+        .map_err(|e| Error::with_cause(ReadFailed("cpu.max".to_string()), e))?;
 
     let fields = content.trim().split(' ').collect::<Vec<&str>>();
     if fields.len() != 2 {

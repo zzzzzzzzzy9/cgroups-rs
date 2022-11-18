@@ -88,8 +88,9 @@ impl NetClsController {
         self.open_path("net_cls.classid", true)
             .and_then(|mut file| {
                 let s = format!("{:#08X}", class);
-                file.write_all(s.as_ref())
-                    .map_err(|e| Error::with_cause(WriteFailed, e))
+                file.write_all(s.as_ref()).map_err(|e| {
+                    Error::with_cause(WriteFailed("net_cls.classid".to_string(), s), e)
+                })
             })
     }
 

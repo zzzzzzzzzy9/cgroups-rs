@@ -132,7 +132,15 @@ impl NetPrioController {
         self.open_path("net_prio.ifpriomap", true)
             .and_then(|mut file| {
                 file.write_all(format!("{} {}", eif, prio).as_ref())
-                    .map_err(|e| Error::with_cause(WriteFailed, e))
+                    .map_err(|e| {
+                        Error::with_cause(
+                            WriteFailed(
+                                "net_prio.ifpriomap".to_string(),
+                                format!("{} {}", eif, prio),
+                            ),
+                            e,
+                        )
+                    })
             })
     }
 }

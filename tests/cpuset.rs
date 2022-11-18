@@ -83,7 +83,7 @@ fn test_cpuset_set_cpus_add_task() {
     println!("tasks after added: {:?}", tasks);
 
     // remove task
-    let _ = cg.remove_task(CgroupPid::from(pid_i));
+    cg.remove_task(CgroupPid::from(pid_i));
     let tasks = cg.tasks();
     println!("tasks after deleted: {:?}", tasks);
     assert_eq!(0, tasks.len());
