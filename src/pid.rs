@@ -112,7 +112,7 @@ impl PidController {
                     },
                     None => Err(Error::new(ParseError)),
                 },
-                Err(e) => Err(Error::with_cause(ReadFailed, e)),
+                Err(e) => Err(Error::with_cause(ReadFailed("pids.events".to_string()), e)),
             }
         })
     }
@@ -130,7 +130,7 @@ impl PidController {
             let res = file.read_to_string(&mut string);
             match res {
                 Ok(_) => parse_max_value(&string),
-                Err(e) => Err(Error::with_cause(ReadFailed, e)),
+                Err(e) => Err(Error::with_cause(ReadFailed("pids.max".to_string()), e)),
             }
         })
     }
@@ -145,7 +145,10 @@ impl PidController {
             let string_to_write = max_pid.to_string();
             match file.write_all(string_to_write.as_ref()) {
                 Ok(_) => Ok(()),
-                Err(e) => Err(Error::with_cause(WriteFailed, e)),
+                Err(e) => Err(Error::with_cause(
+                    WriteFailed("pids.max".to_string(), format!("{:?}", max_pid)),
+                    e,
+                )),
             }
         })
     }

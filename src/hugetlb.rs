@@ -165,13 +165,14 @@ impl HugeTlbController {
     /// Set the limit (in bytes) of how much memory can be backed by hugepages of a certain size
     /// (`hugetlb_size`).
     pub fn set_limit_in_bytes(&self, hugetlb_size: &str, limit: u64) -> Result<()> {
-        let mut file = format!("hugetlb.{}.limit_in_bytes", hugetlb_size);
+        let mut file_name = format!("hugetlb.{}.limit_in_bytes", hugetlb_size);
         if self.v2 {
-            file = format!("hugetlb.{}.max", hugetlb_size);
+            file_name = format!("hugetlb.{}.max", hugetlb_size);
         }
-        self.open_path(&file, true).and_then(|mut file| {
-            file.write_all(limit.to_string().as_ref())
-                .map_err(|e| Error::with_cause(WriteFailed, e))
+        self.open_path(&file_name, true).and_then(|mut file| {
+            file.write_all(limit.to_string().as_ref()).map_err(|e| {
+                Error::with_cause(WriteFailed(file_name.to_string(), limit.to_string()), e)
+            })
         })
     }
 }

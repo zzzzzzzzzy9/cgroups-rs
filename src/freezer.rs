@@ -94,40 +94,40 @@ impl FreezerController {
 
     /// Freezes the processes in the control group.
     pub fn freeze(&self) -> Result<()> {
-        let mut file = "freezer.state";
+        let mut file_name = "freezer.state";
         let mut content = "FROZEN".to_string();
         if self.v2 {
-            file = "cgroup.freeze";
+            file_name = "cgroup.freeze";
             content = "1".to_string();
         }
 
-        self.open_path(file, true).and_then(|mut file| {
+        self.open_path(file_name, true).and_then(|mut file| {
             file.write_all(content.as_ref())
-                .map_err(|e| Error::with_cause(WriteFailed, e))
+                .map_err(|e| Error::with_cause(WriteFailed(file_name.to_string(), content), e))
         })
     }
 
     /// Thaws, that is, unfreezes the processes in the control group.
     pub fn thaw(&self) -> Result<()> {
-        let mut file = "freezer.state";
+        let mut file_name = "freezer.state";
         let mut content = "THAWED".to_string();
         if self.v2 {
-            file = "cgroup.freeze";
+            file_name = "cgroup.freeze";
             content = "0".to_string();
         }
-        self.open_path(file, true).and_then(|mut file| {
+        self.open_path(file_name, true).and_then(|mut file| {
             file.write_all(content.as_ref())
-                .map_err(|e| Error::with_cause(WriteFailed, e))
+                .map_err(|e| Error::with_cause(WriteFailed(file_name.to_string(), content), e))
         })
     }
 
     /// Retrieve the state of processes in the control group.
     pub fn state(&self) -> Result<FreezerState> {
-        let mut file = "freezer.state";
+        let mut file_name = "freezer.state";
         if self.v2 {
-            file = "cgroup.freeze";
+            file_name = "cgroup.freeze";
         }
-        self.open_path(file, false).and_then(|mut file| {
+        self.open_path(file_name, false).and_then(|mut file| {
             let mut s = String::new();
             let res = file.read_to_string(&mut s);
             match res {
@@ -139,7 +139,7 @@ impl FreezerController {
                     "FREEZING" => Ok(FreezerState::Freezing),
                     _ => Err(Error::new(ParseError)),
                 },
-                Err(e) => Err(Error::with_cause(ReadFailed, e)),
+                Err(e) => Err(Error::with_cause(ReadFailed(file_name.to_string()), e)),
             }
         })
     }

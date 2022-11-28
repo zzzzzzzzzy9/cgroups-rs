@@ -148,8 +148,9 @@ impl CpuAcctController {
     /// Reset the statistics the kernel has gathered about the control group.
     pub fn reset(&self) -> Result<()> {
         self.open_path("cpuacct.usage", true).and_then(|mut file| {
-            file.write_all(b"0")
-                .map_err(|e| Error::with_cause(WriteFailed, e))
+            file.write_all(b"0").map_err(|e| {
+                Error::with_cause(WriteFailed("cpuacct.usage".to_string(), "0".to_string()), e)
+            })
         })
     }
 }

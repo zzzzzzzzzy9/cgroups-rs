@@ -181,12 +181,21 @@ mod sealed {
 
             if w {
                 match File::create(&path) {
-                    Err(e) => Err(Error::with_cause(ErrorKind::WriteFailed, e)),
+                    Err(e) => Err(Error::with_cause(
+                        ErrorKind::WriteFailed(
+                            path.display().to_string(),
+                            "[CREATE FILE]".to_string(),
+                        ),
+                        e,
+                    )),
                     Ok(file) => Ok(file),
                 }
             } else {
                 match File::open(&path) {
-                    Err(e) => Err(Error::with_cause(ErrorKind::ReadFailed, e)),
+                    Err(e) => Err(Error::with_cause(
+                        ErrorKind::ReadFailed(path.display().to_string()),
+                        e,
+                    )),
                     Ok(file) => Ok(file),
                 }
             }
@@ -198,7 +207,7 @@ mod sealed {
                 let res = file.read_to_string(&mut string);
                 match res {
                     Ok(_) => parse_max_value(&string),
-                    Err(e) => Err(Error::with_cause(ReadFailed, e)),
+                    Err(e) => Err(Error::with_cause(ReadFailed(f.to_string()), e)),
                 }
             })
         }
@@ -216,8 +225,9 @@ mod sealed {
     pub trait CustomizedAttribute: ControllerInternal {
         fn set(&self, key: &str, value: &str) -> Result<()> {
             self.open_path(key, true).and_then(|mut file| {
-                file.write_all(value.as_ref())
-                    .map_err(|e| Error::with_cause(WriteFailed, e))
+                file.write_all(value.as_ref()).map_err(|e| {
+                    Error::with_cause(WriteFailed(key.to_string(), value.to_string()), e)
+                })
             })
         }
 
@@ -226,7 +236,7 @@ mod sealed {
                 let mut string = String::new();
                 match file.read_to_string(&mut string) {
                     Ok(_) => Ok(string.trim().to_owned()),
-                    Err(e) => Err(Error::with_cause(ReadFailed, e)),
+                    Err(e) => Err(Error::with_cause(ReadFailed(key.to_string()), e)),
                 }
             })
         }
@@ -309,16 +319,24 @@ where
     fn set_notify_on_release(&self, enable: bool) -> Result<()> {
         self.open_path("notify_on_release", true)
             .and_then(|mut file| {
-                write!(file, "{}", enable as i32)
-                    .map_err(|e| Error::with_cause(ErrorKind::WriteFailed, e))
+                write!(file, "{}", enable as i32).map_err(|e| {
+                    Error::with_cause(
+                        ErrorKind::WriteFailed("notify_on_release".to_string(), enable.to_string()),
+                        e,
+                    )
+                })
             })
     }
 
     /// Set release_agent
     fn set_release_agent(&self, path: &str) -> Result<()> {
         self.open_path("release_agent", true).and_then(|mut file| {
-            file.write_all(path.as_bytes())
-                .map_err(|e| Error::with_cause(ErrorKind::WriteFailed, e))
+            file.write_all(path.as_bytes()).map_err(|e| {
+                Error::with_cause(
+                    ErrorKind::WriteFailed("release_agent".to_string(), path.to_string()),
+                    e,
+                )
+            })
         })
     }
     /// Does this controller already exist?
@@ -353,21 +371,29 @@ where
 
     /// Attach a task to this controller.
     fn add_task(&self, pid: &CgroupPid) -> Result<()> {
-        let mut file = "tasks";
+        let mut file_name = "tasks";
         if self.is_v2() {
-            file = "cgroup.procs";
+            file_name = "cgroup.procs";
         }
-        self.open_path(file, true).and_then(|mut file| {
-            file.write_all(pid.pid.to_string().as_ref())
-                .map_err(|e| Error::with_cause(ErrorKind::WriteFailed, e))
+        self.open_path(file_name, true).and_then(|mut file| {
+            file.write_all(pid.pid.to_string().as_ref()).map_err(|e| {
+                Error::with_cause(
+                    ErrorKind::WriteFailed(file_name.to_string(), pid.pid.to_string()),
+                    e,
+                )
+            })
         })
     }
 
     /// Attach a task to this controller by thread group id.
     fn add_task_by_tgid(&self, pid: &CgroupPid) -> Result<()> {
         self.open_path("cgroup.procs", true).and_then(|mut file| {
-            file.write_all(pid.pid.to_string().as_ref())
-                .map_err(|e| Error::with_cause(ErrorKind::WriteFailed, e))
+            file.write_all(pid.pid.to_string().as_ref()).map_err(|e| {
+                Error::with_cause(
+                    ErrorKind::WriteFailed("cgroup.procs".to_string(), pid.pid.to_string()),
+                    e,
+                )
+            })
         })
     }
 
@@ -409,8 +435,11 @@ fn remove_dir(dir: &Path) -> Result<()> {
     }
 
     if dir.exists() && dir.is_dir() {
-        for entry in fs::read_dir(dir).map_err(|e| Error::with_cause(ReadFailed, e))? {
-            let entry = entry.map_err(|e| Error::with_cause(ReadFailed, e))?;
+        for entry in fs::read_dir(dir)
+            .map_err(|e| Error::with_cause(ReadFailed(dir.display().to_string()), e))?
+        {
+            let entry =
+                entry.map_err(|e| Error::with_cause(ReadFailed(dir.display().to_string()), e))?;
             let path = entry.path();
             if path.is_dir() {
                 remove_dir(&path)?;
@@ -817,7 +846,7 @@ pub fn parse_max_value(s: &str) -> Result<MaxValue> {
 pub fn flat_keyed_to_vec(mut file: File) -> Result<Vec<(String, i64)>> {
     let mut content = String::new();
     file.read_to_string(&mut content)
-        .map_err(|e| Error::with_cause(ReadFailed, e))?;
+        .map_err(|e| Error::with_cause(ReadFailed("FIXME: read_string_from".to_string()), e))?;
 
     let mut v = Vec::new();
     for line in content.lines() {
@@ -837,7 +866,7 @@ pub fn flat_keyed_to_vec(mut file: File) -> Result<Vec<(String, i64)>> {
 pub fn flat_keyed_to_hashmap(mut file: File) -> Result<HashMap<String, i64>> {
     let mut content = String::new();
     file.read_to_string(&mut content)
-        .map_err(|e| Error::with_cause(ReadFailed, e))?;
+        .map_err(|e| Error::with_cause(ReadFailed("FIXME: read_string_from".to_string()), e))?;
 
     let mut h = HashMap::new();
     for line in content.lines() {
@@ -857,7 +886,7 @@ pub fn flat_keyed_to_hashmap(mut file: File) -> Result<HashMap<String, i64>> {
 pub fn nested_keyed_to_hashmap(mut file: File) -> Result<HashMap<String, HashMap<String, i64>>> {
     let mut content = String::new();
     file.read_to_string(&mut content)
-        .map_err(|e| Error::with_cause(ReadFailed, e))?;
+        .map_err(|e| Error::with_cause(ReadFailed("FIXME: read_string_from".to_string()), e))?;
 
     let mut h = HashMap::new();
     for line in content.lines() {
@@ -891,7 +920,10 @@ where
             .trim()
             .parse::<T>()
             .map_err(|e| Error::with_cause(ParseError, e)),
-        Err(e) => Err(Error::with_cause(ReadFailed, e)),
+        Err(e) => Err(Error::with_cause(
+            ReadFailed("FIXME: can't get path in fn read_from".to_string()),
+            e,
+        )),
     }
 }
 
@@ -899,7 +931,10 @@ fn read_string_from(mut file: File) -> Result<String> {
     let mut string = String::new();
     match file.read_to_string(&mut string) {
         Ok(_) => Ok(string.trim().to_string()),
-        Err(e) => Err(Error::with_cause(ReadFailed, e)),
+        Err(e) => Err(Error::with_cause(
+            ReadFailed("FIXME: can't get path in fn read_string_from".to_string()),
+            e,
+        )),
     }
 }
 

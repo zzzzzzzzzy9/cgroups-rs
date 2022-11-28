@@ -84,8 +84,9 @@ impl RdmaController {
     /// Set a maximum usage for each RDMA/IB resource.
     pub fn set_max(&self, max: &str) -> Result<()> {
         self.open_path("rdma.max", true).and_then(|mut file| {
-            file.write_all(max.as_ref())
-                .map_err(|e| Error::with_cause(WriteFailed, e))
+            file.write_all(max.as_ref()).map_err(|e| {
+                Error::with_cause(WriteFailed("rdma.max".to_string(), max.to_string()), e)
+            })
         })
     }
 }

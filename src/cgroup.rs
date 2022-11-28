@@ -370,7 +370,8 @@ pub fn get_cgroups_relative_paths_by_pid(pid: u32) -> Result<HashMap<String, Str
 
 fn get_cgroups_relative_paths_by_path(path: String) -> Result<HashMap<String, String>> {
     let mut m = HashMap::new();
-    let content = fs::read_to_string(path).map_err(|e| Error::with_cause(ReadFailed, e))?;
+    let content =
+        fs::read_to_string(path.clone()).map_err(|e| Error::with_cause(ReadFailed(path), e))?;
     for l in content.lines() {
         let fl: Vec<&str> = l.split(':').collect();
         if fl.len() != 3 {

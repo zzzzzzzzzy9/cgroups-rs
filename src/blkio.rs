@@ -665,8 +665,12 @@ impl BlkIoController {
     pub fn set_leaf_weight(&self, w: u64) -> Result<()> {
         self.open_path("blkio.leaf_weight", true)
             .and_then(|mut file| {
-                file.write_all(w.to_string().as_ref())
-                    .map_err(|e| Error::with_cause(WriteFailed, e))
+                file.write_all(w.to_string().as_ref()).map_err(|e| {
+                    Error::with_cause(
+                        WriteFailed("blkio.leaf_weight".to_string(), w.to_string()),
+                        e,
+                    )
+                })
             })
     }
 
@@ -675,7 +679,15 @@ impl BlkIoController {
         self.open_path("blkio.leaf_weight_device", true)
             .and_then(|mut file| {
                 file.write_all(format!("{}:{} {}", major, minor, weight).as_ref())
-                    .map_err(|e| Error::with_cause(WriteFailed, e))
+                    .map_err(|e| {
+                        Error::with_cause(
+                            WriteFailed(
+                                "blkio.leaf_weight_device".to_string(),
+                                format!("{}:{} {}", major, minor, weight),
+                            ),
+                            e,
+                        )
+                    })
             })
     }
 
@@ -683,95 +695,112 @@ impl BlkIoController {
     pub fn reset_stats(&self) -> Result<()> {
         self.open_path("blkio.reset_stats", true)
             .and_then(|mut file| {
-                file.write_all("1".to_string().as_ref())
-                    .map_err(|e| Error::with_cause(WriteFailed, e))
+                file.write_all("1".to_string().as_ref()).map_err(|e| {
+                    Error::with_cause(
+                        WriteFailed("blkio.reset_stats".to_string(), "1".to_string()),
+                        e,
+                    )
+                })
             })
     }
 
     /// Throttle the bytes per second rate of read operation affecting the block device
     /// `major:minor` to `bps`.
     pub fn throttle_read_bps_for_device(&self, major: u64, minor: u64, bps: u64) -> Result<()> {
-        let mut file = "blkio.throttle.read_bps_device";
+        let mut file_name = "blkio.throttle.read_bps_device";
         let mut content = format!("{}:{} {}", major, minor, bps);
         if self.v2 {
-            file = "io.max";
+            file_name = "io.max";
             content = format!("{}:{} rbps={}", major, minor, bps);
         }
-        self.open_path(file, true).and_then(|mut file| {
-            file.write_all(content.as_ref())
-                .map_err(|e| Error::with_cause(WriteFailed, e))
+        self.open_path(file_name, true).and_then(|mut file| {
+            file.write_all(content.as_ref()).map_err(|e| {
+                Error::with_cause(WriteFailed(file_name.to_string(), content.to_string()), e)
+            })
         })
     }
 
     /// Throttle the I/O operations per second rate of read operation affecting the block device
     /// `major:minor` to `bps`.
     pub fn throttle_read_iops_for_device(&self, major: u64, minor: u64, iops: u64) -> Result<()> {
-        let mut file = "blkio.throttle.read_iops_device";
+        let mut file_name = "blkio.throttle.read_iops_device";
         let mut content = format!("{}:{} {}", major, minor, iops);
         if self.v2 {
-            file = "io.max";
+            file_name = "io.max";
             content = format!("{}:{} riops={}", major, minor, iops);
         }
-        self.open_path(file, true).and_then(|mut file| {
-            file.write_all(content.as_ref())
-                .map_err(|e| Error::with_cause(WriteFailed, e))
+        self.open_path(file_name, true).and_then(|mut file| {
+            file.write_all(content.as_ref()).map_err(|e| {
+                Error::with_cause(WriteFailed(file_name.to_string(), content.to_string()), e)
+            })
         })
     }
     /// Throttle the bytes per second rate of write operation affecting the block device
     /// `major:minor` to `bps`.
     pub fn throttle_write_bps_for_device(&self, major: u64, minor: u64, bps: u64) -> Result<()> {
-        let mut file = "blkio.throttle.write_bps_device";
+        let mut file_name = "blkio.throttle.write_bps_device";
         let mut content = format!("{}:{} {}", major, minor, bps);
         if self.v2 {
-            file = "io.max";
+            file_name = "io.max";
             content = format!("{}:{} wbps={}", major, minor, bps);
         }
-        self.open_path(file, true).and_then(|mut file| {
-            file.write_all(content.as_ref())
-                .map_err(|e| Error::with_cause(WriteFailed, e))
+        self.open_path(file_name, true).and_then(|mut file| {
+            file.write_all(content.as_ref()).map_err(|e| {
+                Error::with_cause(WriteFailed(file_name.to_string(), content.to_string()), e)
+            })
         })
     }
 
     /// Throttle the I/O operations per second rate of write operation affecting the block device
     /// `major:minor` to `bps`.
     pub fn throttle_write_iops_for_device(&self, major: u64, minor: u64, iops: u64) -> Result<()> {
-        let mut file = "blkio.throttle.write_iops_device";
+        let mut file_name = "blkio.throttle.write_iops_device";
         let mut content = format!("{}:{} {}", major, minor, iops);
         if self.v2 {
-            file = "io.max";
+            file_name = "io.max";
             content = format!("{}:{} wiops={}", major, minor, iops);
         }
-        self.open_path(file, true).and_then(|mut file| {
-            file.write_all(content.as_ref())
-                .map_err(|e| Error::with_cause(WriteFailed, e))
+        self.open_path(file_name, true).and_then(|mut file| {
+            file.write_all(content.as_ref()).map_err(|e| {
+                Error::with_cause(WriteFailed(file_name.to_string(), content.to_string()), e)
+            })
         })
     }
 
     /// Set the weight of the control group's tasks.
     pub fn set_weight(&self, w: u64) -> Result<()> {
         // Attation: may not find in high kernel version.
-        let mut file = "blkio.weight";
+        let mut file_name = "blkio.weight";
         if self.v2 {
-            file = "io.bfq.weight";
+            file_name = "io.bfq.weight";
         }
-        self.open_path(file, true).and_then(|mut file| {
-            file.write_all(w.to_string().as_ref())
-                .map_err(|e| Error::with_cause(WriteFailed, e))
+        self.open_path(file_name, true).and_then(|mut file| {
+            file.write_all(w.to_string().as_ref()).map_err(|e| {
+                Error::with_cause(WriteFailed(file_name.to_string(), w.to_string()), e)
+            })
         })
     }
 
     /// Same as `set_weight()`, but settable per each block device.
     pub fn set_weight_for_device(&self, major: u64, minor: u64, weight: u64) -> Result<()> {
-        let mut file = "blkio.weight_device";
+        let mut file_name = "blkio.weight_device";
         if self.v2 {
             // Attation: there is no weight for device in runc
             // https://github.com/opencontainers/runc/blob/46be7b612e2533c494e6a251111de46d8e286ed5/libcontainer/cgroups/fs2/io.go#L30
             // may depends on IO schedulers https://wiki.ubuntu.com/Kernel/Reference/IOSchedulers
-            file = "io.bfq.weight";
+            file_name = "io.bfq.weight";
         }
-        self.open_path(file, true).and_then(|mut file| {
+        self.open_path(file_name, true).and_then(|mut file| {
             file.write_all(format!("{}:{} {}", major, minor, weight).as_ref())
-                .map_err(|e| Error::with_cause(WriteFailed, e))
+                .map_err(|e| {
+                    Error::with_cause(
+                        WriteFailed(
+                            file_name.to_string(),
+                            format!("{}:{} {}", major, minor, weight),
+                        ),
+                        e,
+                    )
+                })
         })
     }
 }

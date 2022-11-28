@@ -46,10 +46,11 @@ fn register_memory_event(
     arg: &str,
 ) -> Result<Receiver<String>> {
     let path = cg_dir.join(event_name);
-    let event_file = File::open(path).map_err(|e| Error::with_cause(ReadFailed, e))?;
+    let event_file = File::open(path.clone())
+        .map_err(|e| Error::with_cause(ReadFailed(path.display().to_string()), e))?;
 
-    let eventfd =
-        eventfd(0, EfdFlags::EFD_CLOEXEC).map_err(|e| Error::with_cause(ReadFailed, e))?;
+    let eventfd = eventfd(0, EfdFlags::EFD_CLOEXEC)
+        .map_err(|e| Error::with_cause(ReadFailed("eventfd".to_string()), e))?;
 
     let event_control_path = cg_dir.join("cgroup.event_control");
     let data = if arg.is_empty() {
@@ -59,7 +60,12 @@ fn register_memory_event(
     };
 
     // write to file and set mode to 0700(FIXME)
-    fs::write(&event_control_path, data).map_err(|e| Error::with_cause(WriteFailed, e))?;
+    fs::write(&event_control_path, data.clone()).map_err(|e| {
+        Error::with_cause(
+            WriteFailed(event_control_path.display().to_string(), data),
+            e,
+        )
+    })?;
 
     let mut eventfd_file = unsafe { File::from_raw_fd(eventfd) };
 

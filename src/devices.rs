@@ -237,8 +237,9 @@ impl DevicesController {
         };
         let final_str = format!("{} {}:{} {}", devtype.to_char(), major, minor, perms);
         self.open_path("devices.allow", true).and_then(|mut file| {
-            file.write_all(final_str.as_ref())
-                .map_err(|e| Error::with_cause(WriteFailed, e))
+            file.write_all(final_str.as_ref()).map_err(|e| {
+                Error::with_cause(WriteFailed("devices.allow".to_string(), final_str), e)
+            })
         })
     }
 
@@ -269,8 +270,9 @@ impl DevicesController {
         };
         let final_str = format!("{} {}:{} {}", devtype.to_char(), major, minor, perms);
         self.open_path("devices.deny", true).and_then(|mut file| {
-            file.write_all(final_str.as_ref())
-                .map_err(|e| Error::with_cause(WriteFailed, e))
+            file.write_all(final_str.as_ref()).map_err(|e| {
+                Error::with_cause(WriteFailed("devices.deny".to_string(), final_str), e)
+            })
         })
     }
 
@@ -315,7 +317,7 @@ impl DevicesController {
                         }
                     })
                 },
-                Err(e) => Err(Error::with_cause(ReadFailed, e)),
+                Err(e) => Err(Error::with_cause(ReadFailed("devices.list".to_string()), e)),
             }
         })
     }
