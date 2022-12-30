@@ -10,7 +10,7 @@ use cgroups_rs::Cgroup;
 #[test]
 fn test_cfs_quota_and_periods() {
     let h = cgroups_rs::hierarchies::auto();
-    let cg = Cgroup::new(h, String::from("test_cfs_quota_and_periods"));
+    let cg = Cgroup::new(h, String::from("test_cfs_quota_and_periods")).unwrap();
 
     let cpu_controller: &CpuController = cg.controller_of().unwrap();
 

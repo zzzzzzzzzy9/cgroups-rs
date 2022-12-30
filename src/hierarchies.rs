@@ -12,7 +12,7 @@
 use std::fs;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::blkio::BlkIoController;
 use crate::cpu::CpuController;
@@ -173,6 +173,12 @@ impl Hierarchy for V1 {
         Cgroup::load(auto(), "")
     }
 
+    fn parent_control_group(&self, path: &str) -> Cgroup {
+        let path = Path::new(path);
+        let parent_path = path.parent().unwrap().to_string_lossy().to_string();
+        Cgroup::load(auto(), &parent_path)
+    }
+
     fn root(&self) -> PathBuf {
         self.mountinfo
             .iter()
@@ -247,6 +253,12 @@ impl Hierarchy for V2 {
 
     fn root_control_group(&self) -> Cgroup {
         Cgroup::load(auto(), "")
+    }
+
+    fn parent_control_group(&self, path: &str) -> Cgroup {
+        let path = Path::new(path);
+        let parent_path = path.parent().unwrap().to_string_lossy().to_string();
+        Cgroup::load(auto(), &parent_path)
     }
 
     fn root(&self) -> PathBuf {

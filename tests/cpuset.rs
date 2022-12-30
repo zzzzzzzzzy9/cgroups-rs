@@ -13,7 +13,7 @@ use std::fs;
 #[test]
 fn test_cpuset_memory_pressure_root_cg() {
     let h = cgroups_rs::hierarchies::auto();
-    let cg = Cgroup::new(h, String::from("test_cpuset_memory_pressure_root_cg"));
+    let cg = Cgroup::new(h, String::from("test_cpuset_memory_pressure_root_cg")).unwrap();
     {
         let cpuset: &CpuSetController = cg.controller_of().unwrap();
 
@@ -27,7 +27,7 @@ fn test_cpuset_memory_pressure_root_cg() {
 #[test]
 fn test_cpuset_set_cpus() {
     let h = cgroups_rs::hierarchies::auto();
-    let cg = Cgroup::new(h, String::from("test_cpuset_set_cpus"));
+    let cg = Cgroup::new(h, String::from("test_cpuset_set_cpus")).unwrap();
     {
         let cpuset: &CpuSetController = cg.controller_of().unwrap();
 
@@ -64,7 +64,7 @@ fn test_cpuset_set_cpus() {
 #[test]
 fn test_cpuset_set_cpus_add_task() {
     let h = cgroups_rs::hierarchies::auto();
-    let cg = Cgroup::new(h, String::from("test_cpuset_set_cpus_add_task/sub-dir"));
+    let cg = Cgroup::new(h, String::from("test_cpuset_set_cpus_add_task/sub-dir")).unwrap();
 
     let cpuset: &CpuSetController = cg.controller_of().unwrap();
     let set = cpuset.cpuset();
@@ -77,13 +77,13 @@ fn test_cpuset_set_cpus_add_task() {
 
     // Add a task to the control group.
     let pid_i = libc::pid_t::from(nix::unistd::getpid()) as u64;
-    let _ = cg.add_task(CgroupPid::from(pid_i));
+    let _ = cg.add_task_by_tgid(CgroupPid::from(pid_i));
     let tasks = cg.tasks();
     assert!(!tasks.is_empty());
     println!("tasks after added: {:?}", tasks);
 
     // remove task
-    cg.remove_task(CgroupPid::from(pid_i));
+    cg.remove_task_by_tgid(CgroupPid::from(pid_i)).unwrap();
     let tasks = cg.tasks();
     println!("tasks after deleted: {:?}", tasks);
     assert_eq!(0, tasks.len());

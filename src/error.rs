@@ -51,6 +51,18 @@ pub enum ErrorKind {
     #[error("invalid bytes size")]
     InvalidBytesSize,
 
+    /// The specified controller is not in the list of supported controllers.
+    #[error("specified controller is not in the list of supported controllers")]
+    SpecifiedControllers,
+
+    /// Using method in wrong cgroup version.
+    #[error("using method in wrong cgroup version")]
+    CgroupVersion,
+
+    /// Subsystems is empty.
+    #[error("subsystems is empty")]
+    SubsystemsEmpty,
+
     /// An unknown error has occured.
     #[error("an unknown error")]
     Other,

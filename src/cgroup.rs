@@ -36,14 +36,18 @@ pub struct Cgroup {
     /// The hierarchy.
     hier: Box<dyn Hierarchy>,
     path: String,
+
+    /// List of controllers specifically enabled in the control group.
+    specified_controllers: Option<Vec<String>>,
 }
 
 impl Clone for Cgroup {
     fn clone(&self) -> Self {
         Cgroup {
             subsystems: self.subsystems.clone(),
-            path: self.path.clone(),
             hier: crate::hierarchies::auto(),
+            path: self.path.clone(),
+            specified_controllers: None,
         }
     }
 }
@@ -54,48 +58,67 @@ impl Default for Cgroup {
             subsystems: Vec::new(),
             hier: crate::hierarchies::auto(),
             path: "".to_string(),
+            specified_controllers: None,
         }
     }
 }
 
 impl Cgroup {
+    pub fn v2(&self) -> bool {
+        self.hier.v2()
+    }
+
     /// Create this control group.
-    fn create(&self) {
+    fn create(&self) -> Result<()> {
         if self.hier.v2() {
-            let _ret = create_v2_cgroup(self.hier.root(), &self.path);
+            create_v2_cgroup(self.hier.root(), &self.path, &self.specified_controllers)
         } else {
             for subsystem in &self.subsystems {
                 subsystem.to_controller().create();
             }
+            Ok(())
         }
-    }
-
-    pub fn v2(&self) -> bool {
-        self.hier.v2()
     }
 
     /// Create a new control group in the hierarchy `hier`, with name `path`.
     ///
     /// Returns a handle to the control group that can be used to manipulate it.
-    pub fn new<P: AsRef<Path>>(hier: Box<dyn Hierarchy>, path: P) -> Cgroup {
+    pub fn new<P: AsRef<Path>>(hier: Box<dyn Hierarchy>, path: P) -> Result<Cgroup> {
         let cg = Cgroup::load(hier, path);
-        cg.create();
-        cg
+        cg.create()?;
+        Ok(cg)
+    }
+
+    /// Create a new control group in the hierarchy `hier`, with name `path`.
+    ///
+    /// Returns a handle to the control group that can be used to manipulate it.
+    pub fn new_with_specified_controllers<P: AsRef<Path>>(
+        hier: Box<dyn Hierarchy>,
+        path: P,
+        specified_controllers: Option<Vec<String>>,
+    ) -> Result<Cgroup> {
+        let cg = if let Some(sc) = specified_controllers {
+            Cgroup::load_with_specified_controllers(hier, path, sc)
+        } else {
+            Cgroup::load(hier, path)
+        };
+        cg.create()?;
+        Ok(cg)
     }
 
     /// Create a new control group in the hierarchy `hier`, with name `path` and `relative_paths`
     ///
     /// Returns a handle to the control group that can be used to manipulate it.
     ///
-    /// Note that this method is only meaningful for cgroup v1, call it is equivalent to call `new` in the v2 mode
+    /// Note that this method is only meaningful for cgroup v1, call it is equivalent to call `new` in the v2 mode.
     pub fn new_with_relative_paths<P: AsRef<Path>>(
         hier: Box<dyn Hierarchy>,
         path: P,
         relative_paths: HashMap<String, String>,
-    ) -> Cgroup {
+    ) -> Result<Cgroup> {
         let cg = Cgroup::load_with_relative_paths(hier, path, relative_paths);
-        cg.create();
-        cg
+        cg.create()?;
+        Ok(cg)
     }
 
     /// Create a handle for a control group in the hierarchy `hier`, with name `path`.
@@ -116,6 +139,34 @@ impl Cgroup {
             path: path.to_str().unwrap().to_string(),
             subsystems,
             hier,
+            specified_controllers: None,
+        }
+    }
+
+    /// Create a handle for a specified control group in the hierarchy `hier`, with name `path`.
+    ///
+    /// Returns a handle to the control group (that possibly does not exist until `create()` has
+    /// been called on the cgroup.
+    pub fn load_with_specified_controllers<P: AsRef<Path>>(
+        hier: Box<dyn Hierarchy>,
+        path: P,
+        specified_controllers: Vec<String>,
+    ) -> Cgroup {
+        let path = path.as_ref();
+        let mut subsystems = hier.subsystems();
+        if path.as_os_str() != "" {
+            subsystems = subsystems
+                .into_iter()
+                .filter(|x| specified_controllers.contains(&x.controller_name()))
+                .map(|x| x.enter(path))
+                .collect::<Vec<_>>();
+        }
+
+        Cgroup {
+            path: path.to_str().unwrap().to_string(),
+            subsystems,
+            hier,
+            specified_controllers: Some(specified_controllers),
         }
     }
 
@@ -159,6 +210,7 @@ impl Cgroup {
             subsystems,
             hier,
             path: path.to_str().unwrap().to_string(),
+            specified_controllers: None,
         }
     }
 
@@ -233,36 +285,102 @@ impl Cgroup {
         None
     }
 
+    /// Removes tasks from the control group by thread group id.
+    ///
+    /// Note that this means that the task will be moved back to the root control group in the
+    /// hierarchy and any rules applied to that control group will _still_ apply to the proc.
+    pub fn remove_task_by_tgid(&self, tgid: CgroupPid) -> Result<()> {
+        self.hier.root_control_group().add_task_by_tgid(tgid)
+    }
+
     /// Removes a task from the control group.
     ///
     /// Note that this means that the task will be moved back to the root control group in the
     /// hierarchy and any rules applied to that control group will _still_ apply to the task.
-    pub fn remove_task(&self, pid: CgroupPid) {
-        let _ = self.hier.root_control_group().add_task(pid);
+    pub fn remove_task(&self, tid: CgroupPid) -> Result<()> {
+        self.hier.root_control_group().add_task(tid)
+    }
+
+    /// Moves tasks to the parent control group by thread group id.
+    pub fn move_task_to_parent_by_tgid(&self, tgid: CgroupPid) -> Result<()> {
+        self.hier
+            .parent_control_group(&self.path)
+            .add_task_by_tgid(tgid)
+    }
+
+    /// Moves a task to the parent control group.
+    pub fn move_task_to_parent(&self, tid: CgroupPid) -> Result<()> {
+        self.hier.parent_control_group(&self.path).add_task(tid)
+    }
+
+    /// Return a handle to the parent control group in the hierarchy.
+    pub fn parent_control_group(&self) -> Cgroup {
+        self.hier.parent_control_group(&self.path)
     }
 
     /// Attach a task to the control group.
-    pub fn add_task(&self, pid: CgroupPid) -> Result<()> {
+    pub fn add_task(&self, tid: CgroupPid) -> Result<()> {
         if self.v2() {
             let subsystems = self.subsystems();
             if !subsystems.is_empty() {
                 let c = subsystems[0].to_controller();
-                c.add_task(&pid)
+                c.add_task(&tid)
             } else {
-                Ok(())
+                Err(Error::new(SubsystemsEmpty))
             }
         } else {
             self.subsystems()
                 .iter()
-                .try_for_each(|sub| sub.to_controller().add_task(&pid))
+                .try_for_each(|sub| sub.to_controller().add_task(&tid))
         }
     }
 
-    /// Attach a task to the control group by thread group id.
-    pub fn add_task_by_tgid(&self, pid: CgroupPid) -> Result<()> {
-        self.subsystems()
-            .iter()
-            .try_for_each(|sub| sub.to_controller().add_task_by_tgid(&pid))
+    /// Attach tasks to the control group by thread group id.
+    pub fn add_task_by_tgid(&self, tgid: CgroupPid) -> Result<()> {
+        if self.v2() {
+            let subsystems = self.subsystems();
+            if !subsystems.is_empty() {
+                let c = subsystems[0].to_controller();
+                c.add_task_by_tgid(&tgid)
+            } else {
+                Err(Error::new(SubsystemsEmpty))
+            }
+        } else {
+            self.subsystems()
+                .iter()
+                .try_for_each(|sub| sub.to_controller().add_task_by_tgid(&tgid))
+        }
+    }
+
+    /// set cgroup.type
+    pub fn set_cgroup_type(&self, cgroup_type: &str) -> Result<()> {
+        if self.v2() {
+            let subsystems = self.subsystems();
+            if !subsystems.is_empty() {
+                let c = subsystems[0].to_controller();
+                c.set_cgroup_type(cgroup_type)
+            } else {
+                Err(Error::new(SubsystemsEmpty))
+            }
+        } else {
+            Err(Error::new(CgroupVersion))
+        }
+    }
+
+    /// get cgroup.type
+    pub fn get_cgroup_type(&self) -> Result<String> {
+        if self.v2() {
+            let subsystems = self.subsystems();
+            if !subsystems.is_empty() {
+                let c = subsystems[0].to_controller();
+                let cgroup_type = c.get_cgroup_type()?;
+                Ok(cgroup_type)
+            } else {
+                Err(Error::new(SubsystemsEmpty))
+            }
+        } else {
+            Err(Error::new(CgroupVersion))
+        }
     }
 
     /// Set notify_on_release to the control group.
@@ -279,6 +397,33 @@ impl Cgroup {
             .subsystems()
             .iter()
             .try_for_each(|sub| sub.to_controller().set_release_agent(path))
+    }
+
+    /// Returns an Iterator that can be used to iterate over the procs that are currently in the
+    /// control group.
+    pub fn procs(&self) -> Vec<CgroupPid> {
+        // Collect the procs from all subsystems
+        let mut v = if self.v2() {
+            let subsystems = self.subsystems();
+            if !subsystems.is_empty() {
+                let c = subsystems[0].to_controller();
+                c.procs()
+            } else {
+                vec![]
+            }
+        } else {
+            self.subsystems()
+                .iter()
+                .map(|x| x.to_controller().procs())
+                .fold(vec![], |mut acc, mut x| {
+                    acc.append(&mut x);
+                    acc
+                })
+        };
+
+        v.sort();
+        v.dedup();
+        v
     }
 
     /// Returns an Iterator that can be used to iterate over the tasks that are currently in the
@@ -328,9 +473,22 @@ fn supported_controllers() -> Vec<String> {
         .collect::<Vec<String>>()
 }
 
-fn create_v2_cgroup(root: PathBuf, path: &str) -> Result<()> {
+fn create_v2_cgroup(
+    root: PathBuf,
+    path: &str,
+    specified_controllers: &Option<Vec<String>>,
+) -> Result<()> {
     // controler list ["memory", "cpu"]
-    let controllers = supported_controllers();
+    let controllers = if let Some(s_controllers) = specified_controllers.clone() {
+        if verify_supported_controllers(s_controllers.as_ref()) {
+            s_controllers
+        } else {
+            return Err(Error::new(ErrorKind::SpecifiedControllers));
+        }
+    } else {
+        supported_controllers()
+    };
+
     let mut fp = root;
 
     // enable for root
@@ -356,6 +514,16 @@ fn create_v2_cgroup(root: PathBuf, path: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+pub fn verify_supported_controllers(controllers: &[String]) -> bool {
+    let sc = supported_controllers();
+    for controller in controllers.iter() {
+        if !sc.contains(controller) {
+            return false;
+        }
+    }
+    true
 }
 
 pub fn get_cgroups_relative_paths() -> Result<HashMap<String, String>> {

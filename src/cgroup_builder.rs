@@ -57,11 +57,11 @@
 //!              .read(6, 1, 10)
 //!              .write(11, 1, 100)
 //!          .done()
-//!      .build(h);
+//!      .build(h).unwrap();
 //! ```
 
 use crate::{
-    BlkIoDeviceResource, BlkIoDeviceThrottleResource, Cgroup, DeviceResource, Hierarchy,
+    BlkIoDeviceResource, BlkIoDeviceThrottleResource, Cgroup, DeviceResource, Error, Hierarchy,
     HugePageResource, MaxValue, NetworkPriority, Resources,
 };
 
@@ -80,6 +80,8 @@ pub struct CgroupBuilder {
     name: String,
     /// Internal, unsupported field: use the associated builders instead.
     resources: Resources,
+    /// List of controllers specifically enabled in the control group.
+    specified_controllers: Option<Vec<String>>,
 }
 
 impl CgroupBuilder {
@@ -90,6 +92,7 @@ impl CgroupBuilder {
         CgroupBuilder {
             name: name.to_owned(),
             resources: Resources::default(),
+            specified_controllers: None,
         }
     }
 
@@ -134,10 +137,22 @@ impl CgroupBuilder {
     }
 
     /// Finalize the control group, consuming the builder and creating the control group.
-    pub fn build(self, hier: Box<dyn Hierarchy>) -> Cgroup {
-        let cg = Cgroup::new(hier, self.name);
-        let _ret = cg.apply(&self.resources);
-        cg
+    pub fn build(self, hier: Box<dyn Hierarchy>) -> Result<Cgroup, Error> {
+        if let Some(controllers) = self.specified_controllers {
+            let cg = Cgroup::new_with_specified_controllers(hier, self.name, Some(controllers))?;
+            cg.apply(&self.resources)?;
+            Ok(cg)
+        } else {
+            let cg = Cgroup::new(hier, self.name)?;
+            cg.apply(&self.resources)?;
+            Ok(cg)
+        }
+    }
+
+    /// Specifically enable some controllers in the control group.
+    pub fn set_specified_controllers(mut self, specified_controllers: Vec<String>) -> Self {
+        self.specified_controllers = Some(specified_controllers);
+        self
     }
 }
 
