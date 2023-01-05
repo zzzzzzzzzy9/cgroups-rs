@@ -10,28 +10,25 @@ use cgroups_rs::Controller;
 use cgroups_rs::{Cgroup, CgroupPid, Subsystem};
 
 #[test]
-fn test_tasks_iterator() {
+fn test_procs_iterator_cgroup() {
     let h = cgroups_rs::hierarchies::auto();
     let pid = libc::pid_t::from(nix::unistd::getpid()) as u64;
-    let cg = Cgroup::new(h, String::from("test_tasks_iterator"));
+    let cg = Cgroup::new(h, String::from("test_procs_iterator_cgroup")).unwrap();
     {
         // Add a task to the control group.
-        cg.add_task(CgroupPid::from(pid)).unwrap();
+        cg.add_task_by_tgid(CgroupPid::from(pid)).unwrap();
 
-        use std::{thread, time};
-        thread::sleep(time::Duration::from_millis(100));
-
-        let mut tasks = cg.tasks().into_iter();
-        // Verify that the task is indeed in the control group
-        assert_eq!(tasks.next(), Some(CgroupPid::from(pid)));
-        assert_eq!(tasks.next(), None);
+        let mut procs = cg.procs().into_iter();
+        // Verify that the task is indeed in the xcontrol group
+        assert_eq!(procs.next(), Some(CgroupPid::from(pid)));
+        assert_eq!(procs.next(), None);
 
         // Now, try removing it.
-        cg.remove_task(CgroupPid::from(pid));
-        tasks = cg.tasks().into_iter();
+        cg.remove_task_by_tgid(CgroupPid::from(pid)).unwrap();
+        procs = cg.procs().into_iter();
 
         // Verify that it was indeed removed.
-        assert_eq!(tasks.next(), None);
+        assert_eq!(procs.next(), None);
     }
     cg.delete().unwrap();
 }
@@ -83,7 +80,7 @@ fn test_cgroup_v2() {
         return;
     }
     let h = cgroups_rs::hierarchies::auto();
-    let cg = Cgroup::new(h, String::from("test_v2"));
+    let cg = Cgroup::new(h, String::from("test_v2")).unwrap();
 
     let mem_controller: &MemController = cg.controller_of().unwrap();
     let (mem, swp, rev) = (4 * 1024 * 1000, 2 * 1024 * 1000, 1024 * 1000);
@@ -101,5 +98,59 @@ fn test_cgroup_v2() {
     println!("memswap {:?}", memswap);
     assert_eq!(swp, memswap.limit_in_bytes);
 
+    cg.delete().unwrap();
+}
+
+#[test]
+fn test_tasks_iterator_cgroup_threaded_mode() {
+    if !cgroups_rs::hierarchies::is_cgroup2_unified_mode() {
+        return;
+    }
+    let h = cgroups_rs::hierarchies::auto();
+    let pid = libc::pid_t::from(nix::unistd::getpid()) as u64;
+    let cg = Cgroup::new(h, String::from("test_tasks_iterator_cgroup_threaded_mode")).unwrap();
+    let h = cgroups_rs::hierarchies::auto();
+    let specified_controllers = vec![String::from("cpuset"), String::from("cpu")];
+    let cg_threaded = Cgroup::new_with_specified_controllers(
+        h,
+        String::from("test_tasks_iterator_cgroup_threaded_mode/threaded"),
+        Some(specified_controllers),
+    )
+    .unwrap();
+    cg_threaded.set_cgroup_type("threaded").unwrap();
+    {
+        // Add a task to the control group.
+        cg.add_task_by_tgid(CgroupPid::from(pid)).unwrap();
+
+        let mut procs = cg.procs().into_iter();
+        // Verify that the task is indeed in the xcontrol group
+        assert_eq!(procs.next(), Some(CgroupPid::from(pid)));
+        assert_eq!(procs.next(), None);
+
+        // Add a task to the sub control group.
+        cg_threaded.add_task(CgroupPid::from(pid)).unwrap();
+
+        let mut tasks = cg_threaded.tasks().into_iter();
+        // Verify that the task is indeed in the xcontrol group
+        assert_eq!(tasks.next(), Some(CgroupPid::from(pid)));
+        assert_eq!(tasks.next(), None);
+
+        // Now, try move it to parent.
+        cg_threaded
+            .move_task_to_parent(CgroupPid::from(pid))
+            .unwrap();
+        tasks = cg_threaded.tasks().into_iter();
+
+        // Verify that it was indeed removed.
+        assert_eq!(tasks.next(), None);
+
+        // Now, try removing it.
+        cg.remove_task_by_tgid(CgroupPid::from(pid)).unwrap();
+        procs = cg.procs().into_iter();
+
+        // Verify that it was indeed removed.
+        assert_eq!(procs.next(), None);
+    }
+    cg_threaded.delete().unwrap();
     cg.delete().unwrap();
 }

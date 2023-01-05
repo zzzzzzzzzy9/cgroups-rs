@@ -17,7 +17,7 @@ use libc::pid_t;
 #[test]
 fn create_and_delete_cgroup() {
     let h = cgroups_rs::hierarchies::auto();
-    let cg = Cgroup::new(h, String::from("create_and_delete_cgroup"));
+    let cg = Cgroup::new(h, String::from("create_and_delete_cgroup")).unwrap();
     {
         let pidcontroller: &PidController = cg.controller_of().unwrap();
         pidcontroller.set_pid_max(MaxValue::Value(1337)).unwrap();
@@ -31,7 +31,7 @@ fn create_and_delete_cgroup() {
 #[test]
 fn test_pids_current_is_zero() {
     let h = cgroups_rs::hierarchies::auto();
-    let cg = Cgroup::new(h, String::from("test_pids_current_is_zero"));
+    let cg = Cgroup::new(h, String::from("test_pids_current_is_zero")).unwrap();
     {
         let pidcontroller: &PidController = cg.controller_of().unwrap();
         let current = pidcontroller.get_pid_current();
@@ -43,7 +43,7 @@ fn test_pids_current_is_zero() {
 #[test]
 fn test_pids_events_is_zero() {
     let h = cgroups_rs::hierarchies::auto();
-    let cg = Cgroup::new(h, String::from("test_pids_events_is_zero"));
+    let cg = Cgroup::new(h, String::from("test_pids_events_is_zero")).unwrap();
     {
         let pidcontroller: &PidController = cg.controller_of().unwrap();
         let events = pidcontroller.get_pid_events();
@@ -56,7 +56,7 @@ fn test_pids_events_is_zero() {
 #[test]
 fn test_pid_events_is_not_zero() {
     let h = cgroups_rs::hierarchies::auto();
-    let cg = Cgroup::new(h, String::from("test_pid_events_is_not_zero"));
+    let cg = Cgroup::new(h, String::from("test_pid_events_is_not_zero")).unwrap();
     {
         let pids: &PidController = cg.controller_of().unwrap();
         let before = pids.get_pid_events();
@@ -65,7 +65,7 @@ fn test_pid_events_is_not_zero() {
         match unsafe { fork() } {
             Ok(ForkResult::Parent { child, .. }) => {
                 // move the process into the control group
-                let _ = pids.add_task(&(pid_t::from(child) as u64).into());
+                let _ = pids.add_task_by_tgid(&(pid_t::from(child) as u64).into());
 
                 println!("added task to cg: {:?}", child);
 

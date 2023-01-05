@@ -280,8 +280,17 @@ pub trait Controller {
     /// Attach a task to this controller.
     fn add_task_by_tgid(&self, pid: &CgroupPid) -> Result<()>;
 
+    /// set cgroup type.
+    fn set_cgroup_type(&self, cgroup_type: &str) -> Result<()>;
+
+    /// get cgroup type.
+    fn get_cgroup_type(&self) -> Result<String>;
+
     /// Get the list of tasks that this controller has.
     fn tasks(&self) -> Vec<CgroupPid>;
+
+    /// Get the list of procs that this controller has.
+    fn procs(&self) -> Vec<CgroupPid>;
 
     fn v2(&self) -> bool;
 }
@@ -317,6 +326,9 @@ where
 
     /// Set notify_on_release
     fn set_notify_on_release(&self, enable: bool) -> Result<()> {
+        if self.is_v2() {
+            return Err(Error::new(ErrorKind::CgroupVersion));
+        }
         self.open_path("notify_on_release", true)
             .and_then(|mut file| {
                 write!(file, "{}", enable as i32).map_err(|e| {
@@ -330,6 +342,9 @@ where
 
     /// Set release_agent
     fn set_release_agent(&self, path: &str) -> Result<()> {
+        if self.is_v2() {
+            return Err(Error::new(ErrorKind::CgroupVersion));
+        }
         self.open_path("release_agent", true).and_then(|mut file| {
             file.write_all(path.as_bytes()).map_err(|e| {
                 Error::with_cause(
@@ -373,7 +388,7 @@ where
     fn add_task(&self, pid: &CgroupPid) -> Result<()> {
         let mut file_name = "tasks";
         if self.is_v2() {
-            file_name = "cgroup.procs";
+            file_name = "cgroup.threads";
         }
         self.open_path(file_name, true).and_then(|mut file| {
             file.write_all(pid.pid.to_string().as_ref()).map_err(|e| {
@@ -387,23 +402,21 @@ where
 
     /// Attach a task to this controller by thread group id.
     fn add_task_by_tgid(&self, pid: &CgroupPid) -> Result<()> {
-        self.open_path("cgroup.procs", true).and_then(|mut file| {
+        let file_name = "cgroup.procs";
+        self.open_path(file_name, true).and_then(|mut file| {
             file.write_all(pid.pid.to_string().as_ref()).map_err(|e| {
                 Error::with_cause(
-                    ErrorKind::WriteFailed("cgroup.procs".to_string(), pid.pid.to_string()),
+                    ErrorKind::WriteFailed(file_name.to_string(), pid.pid.to_string()),
                     e,
                 )
             })
         })
     }
 
-    /// Get the list of tasks that this controller has.
-    fn tasks(&self) -> Vec<CgroupPid> {
-        let mut file = "tasks";
-        if self.is_v2() {
-            file = "cgroup.procs";
-        }
-        self.open_path(file, false)
+    /// Get the list of procs that this controller has.
+    fn procs(&self) -> Vec<CgroupPid> {
+        let file_name = "cgroup.procs";
+        self.open_path(file_name, false)
             .map(|file| {
                 let bf = BufReader::new(file);
                 let mut v = Vec::new();
@@ -419,6 +432,64 @@ where
                 v.into_iter().map(CgroupPid::from).collect()
             })
             .unwrap_or_default()
+    }
+
+    /// Get the list of tasks that this controller has.
+    fn tasks(&self) -> Vec<CgroupPid> {
+        let mut file_name = "tasks";
+        if self.is_v2() {
+            file_name = "cgroup.threads";
+        }
+        self.open_path(file_name, false)
+            .map(|file| {
+                let bf = BufReader::new(file);
+                let mut v = Vec::new();
+                for line in bf.lines() {
+                    match line {
+                        Ok(line) => {
+                            let n = line.trim().parse().unwrap_or(0u64);
+                            v.push(n);
+                        }
+                        Err(_) => break,
+                    }
+                }
+                v.into_iter().map(CgroupPid::from).collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// set cgroup.type
+    fn set_cgroup_type(&self, cgroup_type: &str) -> Result<()> {
+        if !self.is_v2() {
+            return Err(Error::new(ErrorKind::CgroupVersion));
+        }
+        let file_name = "cgroup.type";
+        self.open_path(file_name, true).and_then(|mut file| {
+            file.write_all(cgroup_type.as_bytes()).map_err(|e| {
+                Error::with_cause(
+                    ErrorKind::WriteFailed(file_name.to_string(), cgroup_type.to_string()),
+                    e,
+                )
+            })
+        })
+    }
+
+    /// get cgroup.type
+    fn get_cgroup_type(&self) -> Result<String> {
+        if !self.is_v2() {
+            return Err(Error::new(ErrorKind::CgroupVersion));
+        }
+        let file_name = "cgroup.type";
+        self.open_path(file_name, false).and_then(|mut file: File| {
+            let mut string = String::new();
+            match file.read_to_string(&mut string) {
+                Ok(_) => Ok(string.trim().to_owned()),
+                Err(e) => Err(Error::with_cause(
+                    ErrorKind::ReadFailed(file_name.to_string()),
+                    e,
+                )),
+            }
+        })
     }
 
     fn v2(&self) -> bool {
@@ -467,6 +538,9 @@ pub trait Hierarchy: std::fmt::Debug + Send + Sync {
 
     /// Return a handle to the root control group in the hierarchy.
     fn root_control_group(&self) -> Cgroup;
+
+    /// Return a handle to the parent control group in the hierarchy.
+    fn parent_control_group(&self, path: &str) -> Cgroup;
 
     fn v2(&self) -> bool;
 }

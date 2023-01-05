@@ -22,7 +22,8 @@ pub fn test_cpu_res_build() {
         .cpu()
         .shares(85)
         .done()
-        .build(h);
+        .build(h)
+        .unwrap();
 
     {
         let cpu: &CpuController = cg.controller_of().unwrap();
@@ -42,7 +43,8 @@ pub fn test_memory_res_build() {
         .swappiness(70)
         .memory_hard_limit(1024 * 1024 * 1024)
         .done()
-        .build(h);
+        .build(h)
+        .unwrap();
 
     {
         let c: &MemController = cg.controller_of().unwrap();
@@ -64,7 +66,8 @@ pub fn test_pid_res_build() {
         .pid()
         .maximum_number_of_processes(MaxValue::Value(123))
         .done()
-        .build(h);
+        .build(h)
+        .unwrap();
 
     {
         let c: &PidController = cg.controller_of().unwrap();
@@ -83,7 +86,8 @@ pub fn test_devices_res_build() {
         .devices()
         .device(1, 6, DeviceType::Char, true, vec![DevicePermissions::Read])
         .done()
-        .build(h);
+        .build(h)
+        .unwrap();
 
     {
         let c: &DevicesController = cg.controller_of().unwrap();
@@ -113,7 +117,8 @@ pub fn test_network_res_build() {
         .network()
         .class_id(1337)
         .done()
-        .build(h);
+        .build(h)
+        .unwrap();
 
     {
         let c: &NetClsController = cg.controller_of().unwrap();
@@ -134,7 +139,8 @@ pub fn test_hugepages_res_build() {
         .hugepages()
         .limit("2MB".to_string(), 4 * 2 * 1024 * 1024)
         .done()
-        .build(h);
+        .build(h)
+        .unwrap();
 
     {
         let c: &HugeTlbController = cg.controller_of().unwrap();
@@ -152,7 +158,8 @@ pub fn test_blkio_res_build() {
         .blkio()
         .weight(100)
         .done()
-        .build(h);
+        .build(h)
+        .unwrap();
 
     {
         let c: &BlkIoController = cg.controller_of().unwrap();
