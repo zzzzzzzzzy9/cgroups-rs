@@ -176,7 +176,7 @@ impl Hierarchy for V1 {
     fn parent_control_group(&self, path: &str) -> Cgroup {
         let path = Path::new(path);
         let parent_path = path.parent().unwrap().to_string_lossy().to_string();
-        Cgroup::load(auto(), &parent_path)
+        Cgroup::load(auto(), parent_path)
     }
 
     fn root(&self) -> PathBuf {
@@ -258,7 +258,7 @@ impl Hierarchy for V2 {
     fn parent_control_group(&self, path: &str) -> Cgroup {
         let path = Path::new(path);
         let parent_path = path.parent().unwrap().to_string_lossy().to_string();
-        Cgroup::load(auto(), &parent_path)
+        Cgroup::load(auto(), parent_path)
     }
 
     fn root(&self) -> PathBuf {
