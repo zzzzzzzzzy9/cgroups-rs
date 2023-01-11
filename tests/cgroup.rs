@@ -8,6 +8,9 @@
 use cgroups_rs::memory::MemController;
 use cgroups_rs::Controller;
 use cgroups_rs::{Cgroup, CgroupPid, Subsystem};
+use std::process::Command;
+use std::thread::sleep;
+use std::time::Duration;
 
 #[test]
 fn test_procs_iterator_cgroup() {
@@ -29,6 +32,49 @@ fn test_procs_iterator_cgroup() {
 
         // Verify that it was indeed removed.
         assert_eq!(procs.next(), None);
+    }
+    cg.delete().unwrap();
+}
+
+#[test]
+fn test_kill_cgroup() {
+    if !cgroups_rs::hierarchies::is_cgroup2_unified_mode() {
+        return;
+    }
+    let h = cgroups_rs::hierarchies::auto();
+    let cg = Cgroup::new(h, String::from("test_kill_cgroup")).unwrap();
+    {
+        // Spawn a proc, don't want to getpid(2) here.
+        let mut child = Command::new("sleep").arg("infinity").spawn().unwrap();
+        cg.add_task_by_tgid(CgroupPid::from(child.id() as u64))
+            .unwrap();
+
+        let cg_procs = cg.procs();
+        assert_eq!(cg_procs.len(), 1_usize);
+
+        // Now kill and wait on the proc.
+        cg.kill().unwrap();
+
+        let mut tries = 0;
+        let status: Option<std::process::ExitStatus> = loop {
+            match child.try_wait() {
+                Ok(Some(status)) => {
+                    break Some(status);
+                }
+                Ok(None) => {
+                    if tries > 3 {
+                        break None;
+                    }
+                    sleep(Duration::from_millis(100));
+                    tries += 1;
+                }
+                Err(e) => {
+                    child.kill().unwrap();
+                    panic!("error attempting to wait: {}", e);
+                }
+            }
+        };
+        assert!(!status.is_none());
     }
     cg.delete().unwrap();
 }

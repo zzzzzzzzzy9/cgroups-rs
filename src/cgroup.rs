@@ -318,6 +318,28 @@ impl Cgroup {
         self.hier.parent_control_group(&self.path)
     }
 
+    /// Kill every process in the control group. Only supported for v2 cgroups and on
+    /// kernels 5.14+. This will fail with InvalidOperation if the 'cgroup.kill' file does
+    /// not exist.
+    pub fn kill(&self) -> Result<()> {
+        if !self.v2() {
+            return Err(Error::new(CgroupVersion));
+        }
+
+        let val = "1";
+        let file_name = "cgroup.kill";
+        let p = self.hier.root().join(self.path.clone()).join(file_name);
+
+        // If cgroup.kill doesn't exist they're not on 5.14+ so lets
+        // surface some error the caller can check against.
+        if !p.exists() {
+            return Err(Error::new(InvalidOperation));
+        }
+
+        fs::write(p, val)
+            .map_err(|e| Error::with_cause(WriteFailed(file_name.to_string(), val.to_string()), e))
+    }
+
     /// Attach a task to the control group.
     pub fn add_task(&self, tid: CgroupPid) -> Result<()> {
         if self.v2() {
