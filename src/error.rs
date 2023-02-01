@@ -85,7 +85,7 @@ impl fmt::Display for Error {
 }
 
 impl StdError for Error {
-    fn cause(&self) -> Option<&dyn StdError> {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
         #[allow(clippy::manual_map)]
         match self.cause {
             Some(ref x) => Some(&**x),
