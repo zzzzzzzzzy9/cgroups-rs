@@ -43,7 +43,7 @@ pub struct BlkIoData {
     pub data: u64,
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Per-device activity from the control group.
 pub struct IoService {
@@ -59,6 +59,8 @@ pub struct IoService {
     pub sync: u64,
     /// How many items were asynchronously transferred.
     pub r#async: u64,
+    /// How many items were discarded.
+    pub discard: u64,
     /// Total number of items transferred.
     pub total: u64,
 }
@@ -87,44 +89,62 @@ pub struct IoStat {
 }
 
 fn parse_io_service(s: String) -> Result<Vec<IoService>> {
-    s.lines()
+    let mut io_services = Vec::<IoService>::new();
+    let mut io_service = IoService::default();
+
+    let lines = s
+        .lines()
         .filter(|x| x.split_whitespace().count() == 3)
         .map(|x| {
             let mut spl = x.split_whitespace();
-            (spl.next().unwrap(), spl.next().unwrap(), spl.next().unwrap())
+            (
+                spl.next().unwrap(),
+                spl.next().unwrap(),
+                spl.next().unwrap(),
+            )
         })
         .map(|(a, b, c)| {
             let mut spl = a.split(':');
-            (spl.next().unwrap(), spl.next().unwrap(), b, c)
+            (
+                spl.next().unwrap().parse::<i16>(),
+                spl.next().unwrap().parse::<i16>(),
+                b,
+                c,
+            )
         })
-        .collect::<Vec<_>>()
-        .chunks(5)
-        .map(|x| {
-            match x {
-                [(major, minor, "Read", read_val), (_, _, "Write", write_val),
-                   (_, _, "Sync", sync_val), (_, _, "Async", async_val),
-                   (_, _, "Total", total_val)] =>
-                    Some(IoService {
-                        major: major.parse::<i16>().unwrap(),
-                        minor: minor.parse::<i16>().unwrap(),
-                        read: read_val.parse::<u64>().unwrap(),
-                        write: write_val.parse::<u64>().unwrap(),
-                        sync: sync_val.parse::<u64>().unwrap(),
-                        r#async: async_val.parse::<u64>().unwrap(),
-                        total: total_val.parse::<u64>().unwrap(),
-                    }),
-               _ => None,
-            }
-        })
-        .fold(Ok(Vec::new()), |acc, x| {
-            if acc.is_err() || x.is_none() {
-                Err(Error::new(ParseError))
-            } else {
-                let mut acc = acc.unwrap();
-                acc.push(x.unwrap());
-                Ok(acc)
-            }
-        })
+        .collect::<Vec<_>>();
+
+    for (major_num, minor_num, op, val) in lines.iter() {
+        let major = *major_num.as_ref().map_err(|_| Error::new(ParseError))?;
+        let minor = *minor_num.as_ref().map_err(|_| Error::new(ParseError))?;
+
+        if (major != io_service.major || minor != io_service.minor) && io_service.major != 0 {
+            // new block device
+            io_services.push(io_service);
+            io_service = IoService::default();
+        }
+
+        io_service.major = major;
+        io_service.minor = minor;
+
+        let val = val.parse::<u64>().map_err(|_| Error::new(ParseError))?;
+
+        match *op {
+            "Read" => io_service.read = val,
+            "Write" => io_service.write = val,
+            "Sync" => io_service.sync = val,
+            "Async" => io_service.r#async = val,
+            "Discard" => io_service.discard = val,
+            "Total" => io_service.total = val,
+            _ => {}
+        }
+    }
+
+    if io_service.major != 0 {
+        io_services.push(io_service);
+    }
+
+    Ok(io_services)
 }
 
 fn get_value(s: &str) -> String {
@@ -817,30 +837,9 @@ mod test {
 8:32 Write 0
 8:32 Sync 4280320
 8:32 Async 0
+8:32 Discard 1
 8:32 Total 4280320
 8:48 Read 5705479168
-8:48 Write 56096055296
-8:48 Sync 11213923328
-8:48 Async 50587611136
-8:48 Total 61801534464
-8:16 Read 10059776
-8:16 Write 0
-8:16 Sync 10059776
-8:16 Async 0
-8:16 Total 10059776
-8:0 Read 7192576
-8:0 Write 0
-8:0 Sync 7192576
-8:0 Async 0
-8:0 Total 7192576
-Total 61823067136
- ";
-
-    static TEST_WRONG_VALUE: &str = "\
-8:32 Read 4280320
-8:32 Write 0
-8:32 Async 0
-8:32 Total 4280320 8:48 Read 5705479168
 8:48 Write 56096055296
 8:48 Sync 11213923328
 8:48 Async 50587611136
@@ -884,6 +883,7 @@ Total 61823067136
                     write: 0,
                     sync: 4280320,
                     r#async: 0,
+                    discard: 1,
                     total: 4280320,
                 },
                 IoService {
@@ -893,6 +893,7 @@ Total 61823067136
                     write: 56096055296,
                     sync: 11213923328,
                     r#async: 50587611136,
+                    discard: 0,
                     total: 61801534464,
                 },
                 IoService {
@@ -902,6 +903,7 @@ Total 61823067136
                     write: 0,
                     sync: 10059776,
                     r#async: 0,
+                    discard: 0,
                     total: 10059776,
                 },
                 IoService {
@@ -911,12 +913,34 @@ Total 61823067136
                     write: 0,
                     sync: 7192576,
                     r#async: 0,
+                    discard: 0,
                     total: 7192576,
                 }
             ]
         );
-        let err = parse_io_service(TEST_WRONG_VALUE.to_string()).unwrap_err();
-        assert_eq!(err.kind(), &ErrorKind::ParseError,);
+
+        let invalid_values = vec![
+            "\
+8:32 Read 4280320
+8:32 Write a
+8:32 Async 1
+",
+            "\
+8:32 Read 4280320
+b:32 Write 1
+8:32 Async 1
+",
+            "\
+8:32 Read 4280320
+8:32 Write 1
+8:c Async 1
+",
+        ];
+
+        for value in invalid_values {
+            let err = parse_io_service(value.to_string()).unwrap_err();
+            assert_eq!(err.kind(), &ErrorKind::ParseError,);
+        }
     }
 
     #[test]
