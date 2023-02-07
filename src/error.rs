@@ -59,6 +59,10 @@ pub enum ErrorKind {
     #[error("using method in wrong cgroup version")]
     CgroupVersion,
 
+    /// Using method in wrong cgroup mode.
+    #[error("using method in wrong cgroup mode.")]
+    CgroupMode,
+
     /// Subsystems is empty.
     #[error("subsystems is empty")]
     SubsystemsEmpty,
