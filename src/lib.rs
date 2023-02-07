@@ -604,9 +604,9 @@ pub struct CpuResources {
     /// Weight of how much of the total CPU time should this control group get. Note that this is
     /// hierarchical, so this is weighted against the siblings of this control group.
     pub shares: Option<u64>,
-    /// In one `period`, how much can the tasks run in nanoseconds.
+    /// In one `period`, how much can the tasks run in microseconds.
     pub quota: Option<i64>,
-    /// Period of time in nanoseconds.
+    /// Period of time in microseconds.
     pub period: Option<u64>,
     /// This is currently a no-operation.
     pub realtime_runtime: Option<i64>,
