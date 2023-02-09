@@ -16,6 +16,11 @@ use std::convert::From;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+pub const CGROUP_MODE_DOMAIN: &str = "domain";
+pub const CGROUP_MODE_DOMAIN_THREADED: &str = "domain threaded";
+pub const CGROUP_MODE_DOMAIN_INVALID: &str = "domain invalid";
+pub const CGROUP_MODE_THREADED: &str = "threaded";
+
 /// A control group is the central structure to this crate.
 ///
 ///
@@ -346,7 +351,18 @@ impl Cgroup {
             let subsystems = self.subsystems();
             if !subsystems.is_empty() {
                 let c = subsystems[0].to_controller();
-                c.add_task(&tid)
+                let cgroup_type = self.get_cgroup_type()?;
+                // In cgroup v2, writing to the cgroup.threads file is only supported in thread mode.
+                if cgroup_type == *CGROUP_MODE_DOMAIN_THREADED
+                    || cgroup_type == *CGROUP_MODE_THREADED
+                {
+                    // It is used to move the threads of a process into a cgroup in thread mode.
+                    c.add_task(&tid)
+                } else {
+                    // When the cgroup type is domain or domain invalid,
+                    // cgroup.threads cannot be written.
+                    Err(Error::new(CgroupMode))
+                }
             } else {
                 Err(Error::new(SubsystemsEmpty))
             }
@@ -363,6 +379,8 @@ impl Cgroup {
             let subsystems = self.subsystems();
             if !subsystems.is_empty() {
                 let c = subsystems[0].to_controller();
+                // It is used to move a thread of the process to a cgroup,
+                // and other threads of the process will also move together.
                 c.add_task_by_tgid(&tgid)
             } else {
                 Err(Error::new(SubsystemsEmpty))
