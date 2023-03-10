@@ -138,8 +138,11 @@ impl HugeTlbController {
     /// Get the limit (in bytes) of how much memory can be backed by hugepages of a certain size
     /// (`hugetlb_size`).
     pub fn limit_in_bytes(&self, hugetlb_size: &str) -> Result<u64> {
-        self.open_path(&format!("hugetlb.{}.limit_in_bytes", hugetlb_size), false)
-            .and_then(read_u64_from)
+        let mut file_name = format!("hugetlb.{}.limit_in_bytes", hugetlb_size);
+        if self.v2 {
+            file_name = format!("hugetlb.{}.max", hugetlb_size);
+        }
+        self.open_path(&file_name, false).and_then(read_u64_from)
     }
 
     /// Get the current usage of memory that is backed by hugepages of a certain size
