@@ -46,6 +46,7 @@ pub enum DeviceType {
     Block,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for DeviceType {
     fn default() -> Self {
         DeviceType::All
