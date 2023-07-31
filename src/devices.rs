@@ -171,9 +171,9 @@ impl ControllerInternal for DevicesController {
 
         for i in &res.devices {
             if i.allow {
-                let _ = self.allow_device(i.devtype, i.major, i.minor, &i.access);
+                self.allow_device(i.devtype, i.major, i.minor, &i.access)?;
             } else {
-                let _ = self.deny_device(i.devtype, i.major, i.minor, &i.access);
+                self.deny_device(i.devtype, i.major, i.minor, &i.access)?;
             }
         }
 
