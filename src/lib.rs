@@ -879,6 +879,7 @@ pub enum MaxValue {
     Value(i64),
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for MaxValue {
     fn default() -> Self {
         MaxValue::Max

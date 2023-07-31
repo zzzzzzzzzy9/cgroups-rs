@@ -199,7 +199,7 @@ fn test_kill_cgroup() {
                 }
             }
         };
-        assert!(!status.is_none());
+        assert!(status.is_some());
     }
     cg.delete().unwrap();
 }

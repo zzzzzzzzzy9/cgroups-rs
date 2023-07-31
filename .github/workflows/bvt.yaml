@@ -1,7 +1,7 @@
 name: BVT
 on: [pull_request]
 env:
-  RUST_VERSION: 1.52
+  RUST_VERSION: 1.69.0
 jobs:
   build:
     name: Build
