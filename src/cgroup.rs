@@ -74,7 +74,7 @@ impl Cgroup {
     }
 
     /// Create this control group.
-    fn create(&self) -> Result<()> {
+    pub fn create(&self) -> Result<()> {
         if self.hier.v2() {
             create_v2_cgroup(self.hier.root(), &self.path, &self.specified_controllers)
         } else {
@@ -491,6 +491,13 @@ impl Cgroup {
         v.sort();
         v.dedup();
         v
+    }
+
+    /// Checks if the cgroup exists.
+    ///
+    /// Returns true if at least one subsystem exists.
+    pub fn exists(&self) -> bool {
+        self.subsystems().iter().any(|e| e.to_controller().exists())
     }
 }
 
