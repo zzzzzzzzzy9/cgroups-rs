@@ -73,6 +73,11 @@ impl Cgroup {
         self.hier.v2()
     }
 
+    /// Return the path the cgroup is located at.
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
     /// Create this control group.
     pub fn create(&self) -> Result<()> {
         if self.hier.v2() {
