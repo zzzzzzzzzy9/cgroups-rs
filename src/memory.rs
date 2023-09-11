@@ -593,7 +593,10 @@ impl MemController {
                 .open_path("memory.current", false)
                 .and_then(read_u64_from)
                 .unwrap_or(0),
-            max_usage_in_bytes: 0,
+            max_usage_in_bytes: self
+                .open_path("memory.peak", false)
+                .and_then(read_u64_from)
+                .unwrap_or(0),
             move_charge_at_immigrate: 0,
             numa_stat: NumaStat::default(),
             oom_control: OomControl::default(),
@@ -736,7 +739,10 @@ impl MemController {
                 .open_path("memory.swap.current", false)
                 .and_then(read_u64_from)
                 .unwrap_or(0),
-            max_usage_in_bytes: 0,
+            max_usage_in_bytes: self
+                .open_path("memory.swap.peak", false)
+                .and_then(read_u64_from)
+                .unwrap_or(0),
         }
     }
 
