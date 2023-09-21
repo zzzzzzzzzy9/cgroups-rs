@@ -309,43 +309,16 @@ impl Default for V2 {
 
 pub const UNIFIED_MOUNTPOINT: &str = "/sys/fs/cgroup";
 
-#[cfg(any(
-    all(target_os = "linux", not(target_env = "musl")),
-    target_os = "android"
-))]
 pub fn is_cgroup2_unified_mode() -> bool {
     use nix::sys::statfs;
 
     let path = std::path::Path::new(UNIFIED_MOUNTPOINT);
-    let fs_stat = statfs::statfs(path);
-    if fs_stat.is_err() {
-        return false;
-    }
+    let fs_stat = match statfs::statfs(path) {
+        Ok(fs_stat) => fs_stat,
+        Err(_) => return false,
+    };
 
-    // FIXME notwork, nix will not compile CGROUP2_SUPER_MAGIC because not(target_env = "musl")
-    fs_stat.unwrap().filesystem_type() == statfs::CGROUP2_SUPER_MAGIC
-}
-
-pub const INIT_CGROUP_PATHS: &str = "/proc/1/cgroup";
-
-#[cfg(all(target_os = "linux", target_env = "musl"))]
-pub fn is_cgroup2_unified_mode() -> bool {
-    let lines = fs::read_to_string(INIT_CGROUP_PATHS);
-    if lines.is_err() {
-        return false;
-    }
-
-    for line in lines.unwrap().lines() {
-        let fields: Vec<&str> = line.split(':').collect();
-        if fields.len() != 3 {
-            continue;
-        }
-        if fields[0] != "0" {
-            return false;
-        }
-    }
-
-    true
+    fs_stat.filesystem_type() == statfs::CGROUP2_SUPER_MAGIC
 }
 
 pub fn auto() -> Box<dyn Hierarchy> {
