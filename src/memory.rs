@@ -844,13 +844,16 @@ impl MemController {
     /// Set the memory usage limit of the control group, in bytes.
     pub fn set_limit(&self, limit: i64) -> Result<()> {
         let mut file_name = "memory.limit_in_bytes";
+        let mut limit_str = limit.to_string();
         if self.v2 {
             file_name = "memory.max";
+            if limit == -1 {
+                limit_str = "max".to_string();
+            }
         }
         self.open_path(file_name, true).and_then(|mut file| {
-            file.write_all(limit.to_string().as_ref()).map_err(|e| {
-                Error::with_cause(WriteFailed(file_name.to_string(), limit.to_string()), e)
-            })
+            file.write_all(limit_str.as_ref())
+                .map_err(|e| Error::with_cause(WriteFailed(file_name.to_string(), limit_str), e))
         })
     }
 
@@ -881,13 +884,16 @@ impl MemController {
     /// Set the memory+swap limit of the control group, in bytes.
     pub fn set_memswap_limit(&self, limit: i64) -> Result<()> {
         let mut file_name = "memory.memsw.limit_in_bytes";
+        let mut limit_str = limit.to_string();
         if self.v2 {
             file_name = "memory.swap.max";
+            if limit == -1 {
+                limit_str = "max".to_string();
+            }
         }
         self.open_path(file_name, true).and_then(|mut file| {
-            file.write_all(limit.to_string().as_ref()).map_err(|e| {
-                Error::with_cause(WriteFailed(file_name.to_string(), limit.to_string()), e)
-            })
+            file.write_all(limit_str.as_ref())
+                .map_err(|e| Error::with_cause(WriteFailed(file_name.to_string(), limit_str), e))
         })
     }
 
